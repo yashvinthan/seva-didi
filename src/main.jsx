@@ -1142,7 +1142,7 @@ function ResourceHub({ lang, t, search, setSearch, selectedId, setSelectedId, on
           <h1>{t.catalogTitle}</h1>
           <p>{t.catalogBody}</p>
         </div>
-        <span className="resource-total"><strong>{RESOURCE_CATALOG.length}</strong><small>{t.resourceCount}</small></span>
+        <span className="resource-total"><strong>{RESOURCE_CATALOG.length}</strong> <small>{t.resourceCount}</small></span>
       </div>
       <div className="resource-search-row">
         <label className="resource-search"><Search size={18} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t.searchServices} aria-label={t.searchServices} /></label>
