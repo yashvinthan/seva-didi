@@ -40,9 +40,8 @@ import {
   X,
 } from 'lucide-react';
 import { getGeminiGuidance } from './services/gemini';
-import { getHealth, openSession, saveProgress, searchSchemeCatalog, transcribeVoiceWithApi } from './services/api';
 import { getOfflineGuidance } from './services/offlineGuidance';
-import { checkVoiceCapabilities, requestMicrophoneAccess, createSpeechRecognizer, VoiceRecorder, speakText } from './services/voice';
+import { checkVoiceCapabilities, requestMicrophoneAccess, createSpeechRecognizer, VoiceRecorder, speakText, stopSpeaking } from './services/voice';
 import { detectLanguage } from '../shared/detectLanguage.js';
 import { LANGUAGE_META, REGIONAL_LANGUAGE_CODES, CODE_MIXED_LANGUAGE_CODES, getLanguageMeta } from '../shared/languages.js';
 import { RESOURCE_CATALOG, RESOURCE_CATEGORIES } from '../shared/resources.js';
@@ -67,6 +66,191 @@ export const LANGUAGE_GREETINGS = {
   'hi-Latn': 'Namaste, main Seva Didi hoon.',
   'ta-Latn': 'Vanakkam, naan Seva Didi.',
 };
+
+export const LANGUAGE_SPOKEN_GREETINGS = {
+  hi: 'नमस्ते दीदी! मैं सेवा दीदी हूँ। बताइए, आपको क्या सहायता चाहिए? जैसे मुफ्त गैस कनेक्शन, राशन, मातृत्व सहायता ₹5000, या सिलाई का काम सीखना?',
+  bn: 'নমস্কার দিদি! আমি সেবা দিদি। আপনার কী সাহায্য লাগবে? যেমন বিনামূল্যে গ্যাস কানেকশন, রেশন, মাতৃত্ব সাহায্য ৫০০০ টাকা, বা সেলাই কাজ শেখা?',
+  ta: 'வணக்கம் அம்மா! நான் சேவா தீதி. உங்களுக்கு என்ன உதவி வேண்டும்? இலவச கேஸ் இணைப்பு, ரேஷன், பிரசவ உதவி ரூ.5000, அல்லது தையல் பயிற்சி?',
+  te: 'నమస్కారం అక్కా! నేను సేవా దీదీని. మీకు ఏమి సహాయం కావాలి? ఉచిత గ్యాస్ కనెక్షన్, రేషన్, ప్రసూతి సహాయం రూ.5000 లేదా కుట్టు పని శిక్షణ?',
+  mr: 'नमस्ते ताई! मी सेवा दीदी आहे. तुम्हाला कोणती मदत हवी आहे? मोफत गॅस कनेक्शन, रेशन, मातृत्व मदत ₹५०००, किंवा शिलाई काम शिकणे?',
+  kn: 'ನಮಸ್ಕಾರ ಅಕ್ಕಾ! ನಾನು ಸೇವಾ ದೀದಿ. ನಿಮಗೆ ಯಾವ ಸಹಾಯ ಬೇಕು? ಉಚಿತ ಗ್ಯಾಸ್ ಸಂಪರ್ಕ, ರೇಷನ್, ಮಾತೃತ್ವ ಸಹಾಯ ₹5000, ಅಥವಾ ಹೊಲಿಗೆ ತರಬೇತಿ?',
+  gu: 'નમસ્તે બહેન! હું સેવા દીદી છું. તમને શું મદદ જોઈએ છે? મફત ગેસ કનેક્શન, રાશન, માતૃત્વ સહાય ₹5000, અથવા સીવણ કામ શીખવું?',
+  ml: 'നമസ്കാരം ചേച്ചീ! ഞാൻ സേവാ ദീദിയാണ്. നിങ്ങൾക്ക് എന്ത് സഹായമാണ് വേണ്ടത്? സൗജന്യ ഗ്യാസ് കണക്ഷൻ, റേഷൻ, പ്രസവ സഹായം 5000 രൂപ, അല്ലെങ്കിൽ തയ്യൽ പരിശീലനം?',
+  pa: 'ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ ਭੈਣ ਜੀ! ਮੈਂ ਸੇਵਾ ਦੀਦੀ ਹਾਂ। ਤੁਹਾਨੂੰ ਕੀ ਮਦਦ ਚਾਹੀਦੀ ਹੈ? ਮੁਫ਼ਤ ਗੈਸ ਕਨੈਕਸ਼ਨ, ਰਾਸ਼ਨ, ਜਣੇਪਾ ਸਹਾਇਤਾ ₹5000, ਜਾਂ ਸਿਲਾਈ ਸਿੱਖਣੀ?',
+  or: 'ନମସ୍କାର ଭଉଣୀ! ମୁଁ ସେବା ଦୀଦି। ଆପଣଙ୍କୁ କଣ ସାହାଯ୍ୟ ଦରକାର? ମାଗଣା ଗ୍ୟାସ ସଂଯୋଗ, ରାସନ, ମାତୃତ୍ୱ ସହାୟତା ୫୦୦୦ ଟଙ୍କା, ବା ସିଲେଇ କାମ?',
+  as: 'নমস্কাৰ বাইদেউ! মই সেৱা দিদি। আপোনাক কি সহায় লাগে? বিনামূলীয়া গেছ সংযোগ, ৰেচন, মাতৃত্ব সাহায্য ৫০০০ টকা, বা চিলাই কাম শিকা?',
+  ur: 'سلام باجی! میں سیوا دیدی ہوں۔ آپ کو کیا مدد چاہیے؟ جیسے مفت گیس کنکشن، راشن، زچگی امداد 5000 روپے، یا سلائی کا کام؟',
+  en: 'Hello Sister! I am Seva Didi. What help do you need? Free cooking gas connection, ration card, maternity aid ₹5,000, or tailoring training?',
+  'hi-Latn': 'Namaste Didi! Main Seva Didi hoon. Bataiye aapko kya madad chahiye? Jaise free gas connection, ration, maternity help 5000, ya silai ka kaam?',
+  'ta-Latn': 'Vanakkam Akka! Naan Seva Didi. Ungalukku enna udhavi venum? Free gas connection, ration, maternity aid 5000, illa tailoring training-aa?'
+};
+
+export const LANGUAGE_SCHEME_INTRO_SPEECH = {
+  'pmuy-new-connection': {
+    hi: 'दीदी, प्रधानमंत्री उज्ज्वला योजना में महिलाओं को मुफ्त गैस कनेक्शन और पहला भरा हुआ सिलेंडर मिलता है। क्या आपके घर में पहले से गैस कनेक्शन है?',
+    bn: 'দিদি, প্রধানমন্ত্রী উজ্জ্বলা যোজনায় মহিলাদের বিনামূল্যে গ্যাস কানেকশন ও সিলিন্ডার পাওয়া যায়। আপনার বাড়িতে কি আগে থেকেই গ্যাস কানেকশন আছে?',
+    ta: 'அம்மா, பிரதம மந்திரி உஜ்வலா திட்டத்தில் பெண்களுக்கு இலவச கேஸ் இணைப்பு மற்றும் முதல் சிலிண்டர் கிடைக்கும். உங்கள் வீட்டில் ஏற்கனவே கேஸ் இணைப்பு உள்ளதா?',
+    te: 'అక్కా, ప్రధాన మంత్రి ఉజ్జ్వల పథకంలో మహిళలకు ఉచిత గ్యాస్ కనెక్షన్ మరియు మొదటి సిలిండర్ లభిస్తుంది. మీ ఇంట్లో ఇప్పటికే గ్యాస్ కనెక్షన్ ఉందా?',
+    mr: 'ताई, प्रधानमंत्री उज्ज्वला योजनेअंतर्गत महिलांना मोफत गॅस कनेक्शन आणि पहिला भरलेला सिलेंडर मिळतो. तुमच्या घरी आधीपासून गॅस कनेक्शन आहे का?',
+    kn: 'ಅಕ್ಕಾ, ಪ್ರಧಾನ ಮಂತ್ರಿ ಉಜ್ವಲ ಯೋಜನೆಯಲ್ಲಿ ಮಹಿಳೆಯರಿಗೆ ಉಚಿತ ಗ್ಯಾಸ್ ಸಂಪರ್ಕ ಸಿಗುತ್ತದೆ. ನಿಮ್ಮ ಮನೆಯಲ್ಲಿ ಈಗಾಗಲೇ ಗ್ಯಾಸ್ ಸಂಪರ್ಕ ಇದೆಯೇ?',
+    gu: 'બહેન, પ્રધાનમંત્રી ઉજ્જ્વલા યોજનામાં મહિલાઓને મફત ગેસ કનેક્શન મળે છે. શું તમારા ઘરમાં પહેલેથી ગેસ કનેક્શન છે?',
+    ml: 'ചേച്ചീ, പ്രധാനമന്ത്രി ഉജ്ജ്വല പദ്ധതിയിൽ സൗജന്യ ഗ്യാസ് കണക്ഷൻ ലഭിക്കും. നിങ്ങളുടെ വീട്ടിൽ ഇതിനകം ഗ്യാസ് കണക്ഷൻ ഉണ്ടോ?',
+    pa: 'ਭੈਣ ਜੀ, ਪ੍ਰਧਾਨ ਮੰਤਰੀ ਉੱਜਵਲਾ ਯੋਜਨਾ ਵਿੱਚ ਔਰਤਾਂ ਨੂੰ ਮੁਫ਼ਤ ਗੈਸ ਕਨੈਕਸ਼ਨ ਮਿਲਦਾ ਹੈ। ਕੀ ਤੁਹਾਡੇ ਘਰ ਵਿੱਚ ਪਹਿਲਾਂ ਹੀ ਗੈਸ ਕਨੈਕਸ਼ਨ ਹੈ?',
+    or: 'ଭଉଣୀ, ପ୍ରଧାନମନ୍ତ୍ରୀ ଉଜ୍ଜ୍ୱଳା ଯୋଜନାରେ ମହିଳାମାନଙ୍କୁ ମାଗଣା ଗ୍ୟାସ ସଂଯୋଗ ମିଳେ। ଆପଣଙ୍କ ଘରେ ପୂର୍ବରୁ ଗ୍ୟାସ ସଂଯୋଗ ଅଛି କି?',
+    as: 'বাইদেউ, প্ৰধানমন্ত্ৰী উজ্জ্বলা যোজনাত বিনামূলীয়া গেছ সংযোগ পোৱা যায়। আপোনাৰ ঘৰত ইতিমধ্যে গেছ সংযোগ আছে নেকি?',
+    ur: 'باجی، پردھان منتری اجولا یوجنا میں خواتین کو مفت گیس کنکشن ملتا ہے۔ کیا آپ کے گھر میں پہلے سے گیس کنکشن ہے؟',
+    en: 'Sister, PM Ujjwala Yojana provides a free LPG connection to women. Does your home already have a gas connection?',
+    'hi-Latn': 'Didi, PM Ujjwala Yojana mein mahilaon ko free gas connection milta hai. Kya aapke ghar mein pehle se gas connection hai?',
+    'ta-Latn': 'Akka, PM Ujjwala thittathula free gas connection kedaikkum. Unga veetla already gas connection irukka?'
+  },
+  'skill-india': {
+    hi: 'दीदी, स्किल इंडिया और प्रधानमंत्री कौशल विकास योजना में महिलाओं को मुफ्त सिलाई और हुनर सिखाया जाता है। क्या आप मुफ्त सिलाई या हुनर सीखना चाहती हैं?',
+    bn: 'দিদি, স্কিল ইন্ডিয়া যোজনায় মহিলাদের বিনামূল্যে সেলাই ও কাজের প্রশিক্ষণ দেওয়া হয়। আপনি কি বিনামূল্যে সেলাই বা কাজ শিখতে চান?',
+    ta: 'அம்மா, ஸ்கில் இந்தியா திட்டத்தில் பெண்களுக்கு இலவச தையல் மற்றும் தொழில் பயிற்சி அளிக்கப்படுகிறது. நீங்கள் இலவசமாக தையல் பயிற்சி பெற விரும்புகிறீர்களா?',
+    te: 'అక్కా, స్కిల్ ఇండియా పథకంలో మహిళలకు ఉచిత కుట్టు పని మరియు నైపుణ్య శిక్షణ ఇస్తారు. మీరు ఉచిత కుట్టు పని నేర్చుకోవాలనుకుంటున్నారా?',
+    mr: 'ताई, स्किल इंडिया अंतर्गत महिलांना मोफत शिवणकाम आणि व्यवसाय प्रशिक्षण दिले जाते. तुम्हाला मोफत शिलाई काम शिकायचे आहे का?',
+    kn: 'ಅಕ್ಕಾ, ಸ್ಕಿಲ್ ಇಂಡಿಯಾ ಯೋಜನೆಯಲ್ಲಿ ಮಹಿಳೆಯರಿಗೆ ಉಚಿತ ಹೊಲಿಗೆ ತರಬೇತಿ ನೀಡಲಾಗುತ್ತದೆ. ನೀವು ಉಚಿತ ಹೊಲಿಗೆ ಕಲಿಯಲು ಬಯಸುವಿರಾ?',
+    gu: 'બહેન, સ્કિલ ઇન્ડિયા યોજનામાં મહિલાઓને મફત સીવણ અને હુનર શીખવવામાં આવે છે. શું તમે મફત સીવણ કામ શીખવા માંગો છો?',
+    ml: 'ചേച്ചീ, സ്കിൽ ഇന്ത്യ പദ്ധതിയിൽ സൗജന്യ തയ്യൽ പരിശീലനം നൽകുന്നു. നിങ്ങൾക്ക് സൗജന്യമായി തയ്യൽ പഠിക്കണമെന്നുണ്ടോ?',
+    pa: 'ਭੈਣ ਜੀ, ਸਕਿੱਲ ਇੰਡੀਆ ਤਹਿਤ ਔਰਤਾਂ ਨੂੰ ਮੁਫ਼ਤ ਸਿਲਾਈ ਅਤੇ ਹੁਨਰ ਸਿਖਾਇਆ ਜਾਂਦਾ ਹੈ। ਕੀ ਤੁਸੀਂ ਮੁਫ਼ਤ ਸਿਲਾਈ ਸਿੱਖਣਾ ਚਾਹੁੰਦੇ ਹੋ?',
+    or: 'ଭଉଣୀ, ସ୍କିଲ ଇଣ୍ଡିଆ ଯୋଜନାରେ ମହିଳାମାନଙ୍କୁ ମାଗଣା ସିଲେଇ ତାଲିମ ଦିଆଯାଏ। ଆପଣ ମାଗଣାରେ ସିଲେଇ ଶିଖିବାକୁ ଚାହାଁନ୍ତି କି?',
+    as: 'বাইদেউ, স্কিল ইণ্ডিয়া যোজনাত বিনামূলীয়া চিলাই প্ৰশিক্ষণ দিয়া হয়। আপুনি বিনামূলীয়া চিলাই শিকিব বিচাৰে নেকি?',
+    ur: 'باجی، اسکل انڈیا میں خواتین کو مفت سلائی اور ہنر سکھایا جاتا ہے۔ کیا آپ مفت سلائی کا کام سیکھنا چاہتی ہیں؟',
+    en: 'Sister, Skill India offers free tailoring and vocational training for women. Do you want to learn free tailoring or crafts?',
+    'hi-Latn': 'Didi, Skill India mein mahilaon ko free silai training di jaati hai. Kya aap free silai ya hunar seekhna chahti hain?',
+    'ta-Latn': 'Akka, Skill India-la free-aa tailoring thittam irukku. Neenga free tailoring kathukka aasaipadreengala?'
+  },
+  'pmmvy': {
+    hi: 'दीदी, प्रधानमंत्री मातृ वंदना योजना में गर्भवती माताओं को ₹5,000 की नकद सहायता सीधे बैंक में मिलती है। क्या यह आपका पहला या दूसरा बच्चा है?',
+    bn: 'দিদি, প্রধানমন্ত্রী মাতৃ বন্দনা যোজনায় গর্ভবতী মায়েদের ৫০০০ টাকা সরাসরি ব্যাংক একাউন্টে দেওয়া হয়। এটা কি আপনার প্রথম বা দ্বিতীয় সন্তান?',
+    ta: 'அம்மா, மாத்ரு வந்தனா திட்டத்தில் கர்ப்பிணி பெண்களுக்கு ரூ.5000 உதவித்தொகை நேரடியாக வங்கியில் கிடைக்கும். இது உங்கள் முதல் அல்லது இரண்டாவது குழந்தையா?',
+    te: 'అక్కా, ప్రధాన మంత్రి మాతృ వందన పథకంలో గర్భిణులకు రూ.5000 నేరుగా బ్యాంకు ఖాతాలో అందుతాయి. ఇది మీ మొదటి లేదా రెండవ బిడ్డా?',
+    mr: 'ताई, प्रधानमंत्री मातृ वंदना योजनेअंतर्गत गरोदर मातांना ₹५००० ची मदत थेट बँक खात्यात मिळते. हे तुमचे पहिले किंवा दुसरे बाळ आहे का?',
+    kn: 'ಅಕ್ಕಾ, ಮಾತೃ ವಂದನಾ ಯೋಜನೆಯಲ್ಲಿ ಗರ್ಭಿಣಿ ತಾಯಂದಿರಿಗೆ ₹5000 ನೇರವಾಗಿ ಬ್ಯಾಂಕ್ ಖಾತೆಗೆ ಜಮೆಯಾಗುತ್ತದೆ. ಇದು ನಿಮ್ಮ ಮೊದಲ ಅಥವಾ ಎರಡನೇ ಮಗುವಾ?',
+    gu: 'બહેન, પ્રધાનમંત્રી માતૃ વંદના યોજનામાં સગર્ભા માતાઓને ₹૫૦૦૦ ની સહાય સીધી બેંક ખાતામાં મળે છે. શું આ તમારું પહેલું કે બીજું બાળક છે?',
+    ml: 'ചേച്ചീ, മാതൃ വന്ദന പദ്ധതിയിൽ ഗർഭിണികൾക്ക് 5000 രൂപ നേരിട്ട് ബാങ്കിൽ ലഭിക്കും. ഇത് നിങ്ങളുടെ ഒന്നാമത്തെയോ രണ്ടാമത്തെയോ കുട്ടിയാണോ?',
+    pa: 'ਭੈਣ ਜੀ, ਪ੍ਰਧਾਨ ਮੰਤਰੀ ਮਾਤਰੂ ਵੰਦਨਾ ਯੋਜਨਾ ਵਿੱਚ ਗਰਭਵਤੀ ਔਰਤਾਂ ਨੂੰ ₹5000 ਦੀ ਸਹਾਇਤਾ ਸਿੱਧੀ ਬੈਂਕ ਵਿੱਚ ਮਿਲਦੀ ਹੈ। ਕੀ ਇਹ ਤੁਹਾਡਾ ਪਹਿਲਾ ਜਾਂ ਦੂਜਾ ਬੱਚਾ ਹੈ?',
+    or: 'ଭଉଣୀ, ପ୍ରଧାନମନ୍ତ୍ରୀ ମାତୃ ବନ୍ଦନା ଯୋଜନାରେ ଗର୍ଭବତୀ ମାଆମାନଙ୍କୁ ୫୦୦୦ ଟଙ୍କା ସିଧା ବ୍ୟାଙ୍କ ଖାତାରେ ମିଳେ। ଏହା ଆପଣଙ୍କର ପ୍ରଥମ ବା ଦ୍ୱିତୀୟ ସନ୍ତାନ କି?',
+    as: 'বাইদেউ, প্ৰধানমন্ত্ৰী মাতৃ বন্দনা যোজনাত গৰ্ভৱতী মহিলাক ৫০০০ টকা পোনে পোনে বেংক একাউণ্টত দিয়া হয়। এইটো আপোনাৰ প্ৰথম নে দ্বিতীয় সন্তান?',
+    ur: 'باجی، پردھان منتری ماترو وندنا یوجنا میں حاملہ خواتین کو 5000 روپے سیدھے بینک اکاؤنٹ میں ملتے ہیں۔ کیا یہ آپ کا پہلا یا دوسرا بچہ ہے؟',
+    en: 'Sister, PM Matru Vandana Yojana provides ₹5,000 cash assistance directly to bank accounts for pregnant mothers. Is this your first or second child?',
+    'hi-Latn': 'Didi, PM Matru Vandana Yojana mein pregnant mothers ko 5000 rupaye seedhe bank account mein milte hain. Kya ye aapka pehla ya doosra bachha hai?',
+    'ta-Latn': 'Akka, PM Matru Vandana thittathula 5000 rupees direct-aa bank account-ku varum. Idhu unga mudhal illa randaavathu kozhandhaiya?'
+  },
+  'safety': {
+    hi: 'दीदी, महिला सुरक्षा हेल्पलाइन 181 पर चौबीसों घंटे मुफ्त पुलिस और सुरक्षा सहायता मिलती है। आप कभी भी सीधे 181 पर कॉल कर सकती हैं।',
+    bn: 'দিদি, মহিলা হেল্পলাইন ১৮১ নম্বরে ২৪ ঘণ্টা বিনামূল্যে পুলিশ ও নিরাপত্তা সহায়তা পাওয়া যায়। আপনি সরাসরি ১৮১ নম্বরে ফোন করতে পারেন।',
+    ta: 'அம்மா, பெண்கள் உதவி எண் 181-ல் 24 மணி நேரமும் இலவச போலீஸ் மற்றும் அவசர உதவி கிடைக்கும். நீங்கள் உடனடியாக 181 எண்ணை அழைக்கலாம்.',
+    te: 'అక్కా, మహిళా హెల్ప్‌లైన్ 181 ద్వారా 24 గంటలూ ఉచిత పోలీస్ మరియు అత్యవసర భద్రతా సహాయం అందుబాటులో ఉంది. మీరు నేరుగా 181 కు కాల్ చేయవచ్చు.',
+    mr: 'ताई, महिला हेल्पलाइन १८१ वर २४ तास मोफत पोलीस आणि सुरक्षा मदत उपलब्ध आहे. तुम्ही त्वरित १८१ वर फोन करू शकता.',
+    kn: 'ಅಕ್ಕಾ, ಮಹಿಳಾ ಸಹಾಯವಾಣಿ 181 ರಲ್ಲಿ 24 ಗಂಟೆಯೂ ಉಚಿತ ಪೊಲೀಸ್ ಮತ್ತು ರಕ್ಷಣಾ ಸಹಾಯ ಸಿಗುತ್ತದೆ. ನೀವು ನೇರವಾಗಿ 181 ಗೆ ಕರೆ ಮಾಡಬಹುದು.',
+    gu: 'બહેન, મહિલા હેલ્પલાઇન 181 પર 24 કલાક મફત પોલીસ અને સુરક્ષા સહાય મળે છે. તમે સીધા 181 પર ફોન કરી શકો છો.',
+    ml: 'ചേച്ചീ, വനിതാ ഹെൽപ്പ്‌ലൈൻ 181 ൽ 24 മണിക്കൂറും സൗജന്യ പോലീസും സുരക്ഷാ സഹായവും ലഭിക്കും. നിങ്ങൾക്ക് നേരിട്ട് 181 ലേക്ക് വിളിക്കാം.',
+    pa: 'ਭੈਣ ਜੀ, ਮਹਿਲਾ ਹੈਲਪਲਾਈਨ 181 ਉੱਤੇ 24 ਘੰਟੇ ਮੁਫ਼ਤ ਪੁਲਿਸ ਅਤੇ ਸੁਰੱਖਿਆ ਸਹਾਇਤਾ ਮਿਲਦੀ ਹੈ। ਤੁਸੀਂ ਸਿੱਧਾ 181 ਡਾਇਲ ਕਰ ਸਕਦੇ ਹੋ।',
+    or: 'ଭଉଣୀ, ମହିଳା ହେଲ୍ପଲାଇନ ୧୮୧ ରେ ୨୪ ଘଣ୍ଟା ମାଗଣା ପୋଲିସ ଓ ସୁରକ୍ଷା ସହାୟତା ମିଳେ। ଆପଣ ସିଧାସଳଖ ୧୮୧ କୁ କଲ୍ କରିପାରିବେ।',
+    as: 'বাইদেউ, মহিলা হেল্পলাইন ১৮১ নম্বৰত ২৪ ঘণ্টাই বিনামূলীয়া আৰক্ষী আৰু সুৰক্ষা সাহায্য পোৱা যায়। আপুনি পোনে পোনে ১৮১ নম্বৰত ফোন কৰিব পাৰে।',
+    ur: 'باجی، خواتین ہیلپ لائن 181 پر 24 گھنٹے مفت پولیس اور سیکیورٹی امداد دستیاب ہے۔ آپ فوری طور پر 181 پر کال کر سکتی ہیں۔',
+    en: 'Sister, Women Helpline 181 provides 24x7 free emergency and police protection. You can dial 181 anytime without internet.',
+    'hi-Latn': 'Didi, Women Helpline 181 par 24 ghante free safety aur police help milti hai. Aap abhi seedhe 181 dial kar sakti hain.',
+    'ta-Latn': 'Akka, Women Helpline 181-la 24x7 free safety and police help kedaikkum. Neenga direct-aa 181 call pannalaam.'
+  }
+};
+
+const GAS_KEYWORDS = [
+  'गैस', 'सिलेंडर', 'चूल्हा', 'उज्ज्वला', 'कनेक्शन', 'एलपीजी',
+  'gas', 'cylinder', 'stove', 'ujjwala', 'pmuy', 'lpg', 'chulha',
+  'கேஸ்', 'சிலிண்டர்', 'அடுப்பு', 'உஜ்வலா', 'இணைப்பு',
+  'గ్యాస్', 'సిలిండర్', 'పొయ్యి', 'ఉజ్జ్వల', 'కనెక్షన్',
+  'গ্যাস', 'সিলিন্ডার', 'উনুন', 'উজ্জ্বলা', 'সংযোগ',
+  'गॅस', 'सिलेंडर', 'शेगडी', 'उज्ज्वला',
+  'ಗ್ಯಾಸ್', 'ಸಿಲಿಂಡರ್', 'ಒಲೆ', 'ಉಜ್ವಲ',
+  'ગેસ', 'સિલિન્ડર', 'ચૂલો', 'ઉજ્જ્વલા',
+  'ഗ്യാസ്', 'സിലിണ്ടർ', 'അടുപ്പ്', 'ഉജ്ജ്വല',
+  'ਗੈਸ', 'ਸਿਲੰਡਰ', 'ਚੁੱਲ੍ਹਾ', 'ਉੱਜਵਲਾ',
+  'ଗ୍ୟାସ', 'ସିଲିଣ୍ଡର', 'ଚୁଲି', 'ଉଜ୍ଜ୍ୱଳା',
+  'গেছ', 'চিলিণ্ডাৰ', 'চৌকা',
+  'گیس', 'سلنڈر', 'چولہا', 'اجولا'
+];
+
+const SKILL_KEYWORDS = [
+  'सिलाई', 'कढ़ाई', 'हुनर', 'काम', 'ट्रेनिंग', 'कौशल', 'मशीन', 'दर्जी', 'रोजगार', 'सिलाई मशीन',
+  'skill', 'tailor', 'tailoring', 'sewing', 'machine', 'craft', 'training', 'job', 'work', 'hunar', 'kam', 'silai',
+  'தையல்', 'பயிற்சி', 'திறன்', 'மெஷின்', 'தையற்கலை', 'வேலை',
+  'కుట్టు', 'పని', 'శిక్షణ', 'నైపుణ్యం', 'మిషన్', 'టైలరింగ్',
+  'সেলাই', 'কাজ', 'প্রশিক্ষণ', 'দক্ষতা', 'মেশিন', 'দর্জি',
+  'शिलाई', 'काम', 'प्रशिक्षण', 'कौशल्य', 'शिवणकाम',
+  'ಹೊಲಿಗೆ', 'ಕೆಲಸ', 'ತರಬೇತಿ', 'ಕೌಶಲ್ಯ',
+  'સીવણ', 'કામ', 'તાલીમ', 'કૌશલ્ય',
+  'തയ്യൽ', 'ജോലി', 'പരിശീലനം',
+  'ਸਿਲਾਈ', 'ਕੰਮ', 'ਸਿਖਲਾਈ', 'ਹੁਨਰ',
+  'ਸିଲେଇ', 'କାମ', 'ପ୍ରଶିକ୍ଷଣ', 'ଦକ୍ଷତା',
+  'চিলাই', 'কাম', 'প্ৰশিক্ষণ',
+  'سلائی', 'کام', 'تربیت', 'ہنر'
+];
+
+const MATERNITY_KEYWORDS = [
+  'गर्भवती', 'मातृत्व', 'बच्चा', 'शिशु', 'पोषण', 'जच्चा', 'प्रसव', '5000', 'मातृ वंदना', 'मातृ',
+  'pregnant', 'pregnancy', 'maternity', 'baby', 'child', 'nutrition', 'pmmvy', '5000', 'delivery',
+  'கர்ப்பிணி', 'பிரசவம்', 'குழந்தை', 'தாய்மை', 'சத்துணவு',
+  'గర్భిణి', 'ప్రసవం', 'బిడ్డ', 'పోషణ', 'తల్లి',
+  'গর্ভবতী', 'প্রসব', 'সন্তান', 'শিশু', 'পুষ্টি', 'মা',
+  'गरोदर', 'मातृत्व', 'बाळ', 'पोषण', 'प्रसूती',
+  'ಗರ್ಭಿಣಿ', 'ಹೆರಿಗೆ', 'ಮಗು', 'ಪೋಷಣೆ', 'ತಾಯಿ',
+  'સગર્ભા', 'પ્રસુતિ', 'બાળક', 'પોષણ', 'માતા',
+  'ഗർഭിണി', 'പ്രസവം', 'കുഞ്ഞ്', 'മാതൃത്വം',
+  'ਗਰਭਵਤੀ', 'ਜਣੇਪਾ', 'ਬੱਚਾ', 'ਪੋਸ਼ਣ', 'ਮਾਂ',
+  'ଗର୍ଭବତୀ', 'ପ୍ରସବ', 'ଶିଶୁ', 'ପୋଷଣ',
+  'গৰ্ভৱতী', 'প্ৰসৱ', 'শিশু',
+  'حاملہ', 'زچگی', 'بچہ', 'ماں'
+];
+
+const SAFETY_KEYWORDS = [
+  'सुरक्षा', 'मदद', 'पुलिस', '181', 'हिंसा', 'परेशानी', 'हेल्पलाइन', 'डर', 'खतरा',
+  'safety', 'help', 'emergency', 'police', '181', 'danger', 'helpline',
+  'பாதுகாப்பு', 'உதவி', 'போலீஸ்',
+  'భద్రత', 'సహాయం', 'పోలీస్',
+  'নিরাপত্তা', 'সাহায্য', 'পুলিশ',
+  'सुरक्षा', 'मदत', 'पोलीस',
+  'ರಕ್ಷಣೆ', 'ಭದ್ರತೆ', 'ಸಹಾಯ',
+  'સુરક્ષા', 'મદદ', 'પોલીસ',
+  'സുരക്ഷ', 'സഹായം',
+  'ਸੁਰੱਖਿਆ', 'ਮਦਦ', 'ਪੁਲਿਸ',
+  'ସୁରକ୍ଷା', 'ସାହାଯ୍ୟ', 'ପୋଲିସ',
+  'নিৰাপত্তা', 'সহায়',
+  'حفاظت', 'مدد', 'پولیس'
+];
+
+const RATION_KEYWORDS = [
+  'राशन', 'अनाज', 'गेहूं', 'चावल', 'कोटा', 'खाद्य', 'खाद्य सुरक्षा',
+  'ration', 'food', 'grain', 'rice', 'wheat', 'nfsa',
+  'ரேஷன்', 'அரிசி', 'உணவு',
+  'రేషన్', 'బియ్యం', 'ఆహారం',
+  'রেশন', 'চাল', 'গম', 'খাদ্য',
+  'रेशन', 'धान्य', 'अन्न',
+  'ರೇಷನ್', 'ಅಕ್ಕಿ', 'ಆಹಾರ',
+  'રાશન', 'અનાજ', 'ઘઉં',
+  'റേഷൻ', 'അരി', 'ഭക്ഷ്യം',
+  'ਰਾਸ਼ਨ', 'ਕਣਕ', 'ਚੌਲ',
+  'ରାସନ', 'ଚାଉଳ', 'ଗହମ',
+  'ৰেচন', 'চাউল',
+  'راشن', 'اناج', 'گندم'
+];
+
+const BANK_KEYWORDS = [
+  'बैंक', 'खाता', 'जन धन', 'पैसा', 'बचत', 'पासबुक',
+  'bank', 'account', 'money', 'jan dhan', 'savings', 'passbook',
+  'வங்கி', 'கணக்கு', 'பணம்',
+  'బ్యాంక్', 'ఖాతా', 'డబ్బులు',
+  'ব্যাংক', 'একাউন্ট', 'টাকা',
+  'बँक', 'खाते', 'पैसे',
+  'ಬ್ಯಾಂಕ್', 'ಖಾತೆ', 'ಹಣ',
+  'બેંક', 'ખાતું', 'પૈસા',
+  'ബാങ്ക്', 'അക്കൗണ്ട്', 'പണം',
+  'ਬੈਂਕ', 'ਖਾਤਾ', 'ਪੈਸੇ',
+  'ବ୍ୟାଙ୍କ', 'ଖାତା', 'ଟଙ୍କା',
+  'বেংক', 'একাউণ্ট', 'টকা',
+  'بینک', 'کھاتہ', 'پیسہ'
+];
 
 const copy = {
   hi: {
@@ -626,7 +810,223 @@ const localizedOfflineLabels = {
 
 Object.entries(localizedOfflineLabels).forEach(([code, details]) => Object.assign(copy[code], details));
 
+const quickTopicsTranslations = {
+  hi: {
+    title: 'सीधे एक बार छूकर पूछें:',
+    gas: 'गैस कनेक्शन',
+    skill: 'सिलाई व हुनर केंद्र',
+    maternity: 'मातृत्व सहायता ₹5,000',
+    ration: 'मुफ्त राशन योजना',
+    safety: 'महिला सुरक्षा 181',
+    janDhan: 'जन धन खाता',
+  },
+  en: {
+    title: 'Popular topics to ask or tap:',
+    gas: 'LPG Gas Connection',
+    skill: 'Tailoring & Skills',
+    maternity: 'Maternity Benefit ₹5,000',
+    ration: 'Ration & Food Security',
+    safety: 'Women Helpline 181',
+    janDhan: 'Jan Dhan Account',
+  },
+  bn: {
+    title: 'সরাসরি স্পর্শ করে জানুন:',
+    gas: 'গ্যাস সংযোগ',
+    skill: 'সেলাই ও প্রশিক্ষণ',
+    maternity: 'মাতৃত্ব সহায়তা ₹৫,০০০',
+    ration: 'বিনামূল্যে রেশন',
+    safety: 'মহিলা হেল্পলাইন ১৮১',
+    janDhan: 'জন ধন অ্যাকাউন্ট',
+  },
+  ta: {
+    title: 'தொட்டு தெரிந்துகொள்ளுங்கள்:',
+    gas: 'கேஸ் இணைப்பு',
+    skill: 'தையல் & பயிற்சி',
+    maternity: 'மகப்பேறு உதவி ₹5,000',
+    ration: 'இலவச ரேஷன்',
+    safety: 'மகளிர் உதவி 181',
+    janDhan: 'ஜன் தன் கணக்கு',
+  },
+  te: {
+    title: 'తాకి తెలుసుకోండి:',
+    gas: 'గ్యాస్ కనెక్షన్',
+    skill: 'కుట్టు శిక్షణ & నైపుణ్యాలు',
+    maternity: 'మాతృత్వ సహాయం ₹5,000',
+    ration: 'ఉచిత రేషన్',
+    safety: 'మహిళా హెల్ప్‌లైన్ 181',
+    janDhan: 'జన్ ధన్ ఖాతా',
+  },
+  mr: {
+    title: 'स्पर्श करून माहिती घ्या:',
+    gas: 'गॅस कनेक्शन',
+    skill: 'शिलाई व कौशल्य केंद्र',
+    maternity: 'मातृत्व सहाय्य ₹५,०००',
+    ration: 'मोफत रेशन',
+    safety: 'महिला सुरक्षा १८१',
+    janDhan: 'जन धन खाते',
+  },
+  kn: {
+    title: 'ಒಮ್ಮೆ ಸ್ಪರ್ಶಿಸಿ ಕೇಳಿ:',
+    gas: 'ಗ್ಯಾಸ್ ಸಂಪರ್ಕ',
+    skill: 'ಹೊಲಿಗೆ ಮತ್ತು ಕೌಶಲ್ಯ',
+    maternity: 'ಮಾತೃತ್ವ ನೆರವು ₹5,000',
+    ration: 'ಉಚಿತ ರೇಷನ್',
+    safety: 'ಮಹಿಳಾ ಸಹಾಯವಾಣಿ 181',
+    janDhan: 'ಜನ್ ಧನ್ ಖಾತೆ',
+  },
+  gu: {
+    title: 'સ્પર્શ કરીને માહિતી મેળવો:',
+    gas: 'ગેસ કનેક્શન',
+    skill: 'સીવણ અને કૌશલ્ય',
+    maternity: 'માતૃત્વ સહાય ₹5,000',
+    ration: 'મફત રાશન',
+    safety: 'મહિલા સુરક્ષા 181',
+    janDhan: 'જન ધન ખાતું',
+  },
+  ml: {
+    title: 'തൊട്ട് ചോദിക്കൂ:',
+    gas: 'ഗ്യാസ് കണക്ഷൻ',
+    skill: 'തയ്യൽ & നൈപുണ്യം',
+    maternity: 'മാതൃത്വ സഹായം ₹5,000',
+    ration: 'സൗജന്യ റേഷൻ',
+    safety: 'വനിതാ ഹെൽപ്‌ലൈൻ 181',
+    janDhan: 'ജൻ ധൻ അക്കൗണ്ട്',
+  },
+  pa: {
+    title: 'ਸਿੱਧਾ ਛੂਹ ਕੇ ਪੁੱਛੋ:',
+    gas: 'ਗੈਸ ਕਨੈਕਸ਼ਨ',
+    skill: 'ਸਿਲਾਈ ਤੇ ਹੁਨਰ',
+    maternity: 'ਮਾਤ੍ਰਤਵ ਸਹਾਇਤਾ ₹5,000',
+    ration: 'ਮੁਫ਼ਤ ਰਾਸ਼ਨ',
+    safety: 'ਮਹਿਲਾ ਹੈਲਪਲਾਈਨ 181',
+    janDhan: 'ਜਨ ਧਨ ਖਾਤਾ',
+  },
+  or: {
+    title: 'ଥରେ ଛୁଇଁ ପଚାରନ୍ତୁ:',
+    gas: 'ଗ୍ୟାସ ସଂଯୋଗ',
+    skill: 'ସିଲେଇ ଓ ପ୍ରଶିକ୍ଷଣ',
+    maternity: 'ମାତୃତ୍ୱ ସହାୟତା ₹୫,୦୦୦',
+    ration: 'ମାଗଣା ରାସନ',
+    safety: 'ମହିଳା ହେଲ୍ପଲାଇନ ୧୮୧',
+    janDhan: 'ଜନ ଧନ ଖାତା',
+  },
+  as: {
+    title: 'স্পৰ্শ কৰি সোধক:',
+    gas: 'গেছ সংযোগ',
+    skill: 'চিলাই আৰু প্ৰশিক্ষণ',
+    maternity: 'মাতৃত্ব সাহায্য ₹৫,০০০',
+    ration: 'বিনামূলীয়া ৰেচন',
+    safety: 'মহিলা হেল্পলাইন ১৮১',
+    janDhan: 'জন ধন একাউণ্ট',
+  },
+  ur: {
+    title: 'براہ راست چھو کر پوچھیں:',
+    gas: 'گیس کنکشن',
+    skill: 'سلائی و ہنر مرکز',
+    maternity: 'مامتا امداد ۵،۰۰۰ روپے',
+    ration: 'مفت راشن اسکیم',
+    safety: 'خواتین ہیلپ لائن ۱৮۱',
+    janDhan: 'جن دھن اکاؤنٹ',
+  },
+  'hi-Latn': {
+    title: 'Touch karke poohein:',
+    gas: 'Gas connection',
+    skill: 'Silai & skill training',
+    maternity: 'Maternity benefit ₹5,000',
+    ration: 'Free ration scheme',
+    safety: 'Women helpline 181',
+    janDhan: 'Jan Dhan account',
+  },
+  'ta-Latn': {
+    title: 'Touch panni kelunga:',
+    gas: 'Gas connection',
+    skill: 'Tailoring & skill training',
+    maternity: 'Maternity aid ₹5,000',
+    ration: 'Free ration scheme',
+    safety: 'Women helpline 181',
+    janDhan: 'Jan Dhan account',
+  },
+};
+
 const steps = ['eligibility', 'documents', 'visit'];
+
+function HandWheatSvg({ size = 40, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 36V12" />
+      <path d="M20 12C18 9 13 8 13 13C13 18 18 19 20 19" />
+      <path d="M20 12C22 9 27 8 27 13C27 18 22 19 20 19" />
+      <path d="M20 19C17 16 11 16 12 22C13 26 18 25 20 25" />
+      <path d="M20 19C23 16 29 16 28 22C27 26 22 25 20 25" />
+      <path d="M20 25C17 23 12 24 13 29C14 32 18 31 20 31" />
+      <path d="M20 25C23 23 28 24 27 29C26 32 22 31 20 31" />
+      <path d="M20 12V4" />
+    </svg>
+  );
+}
+
+function HandFlameSvg({ size = 40, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 4C20 4 14 11 14 19C14 26.5 17 33 20 35C23 33 26 26.5 26 19C26 14 23 9 20 4Z" />
+      <path d="M20 35C14 34 8 28 8 21C8 16 11 12 13 10C12 14 13 18 16 21" />
+      <path d="M20 35C26 34 32 28 32 21C32 16 29 12 27 10C28 14 27 18 24 21" />
+      <path d="M20 23C19 25 18 27 18 29C18 31 19 33 20 34C21 33 22 31 22 29C22 27 21 25 20 23Z" />
+    </svg>
+  );
+}
+
+function HandLeafSvg({ size = 40, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 34C11 26 19 14 32 6C32 19 26 27 18 30C14 31 10 32 8 34Z" />
+      <path d="M8 34C14 26 22 17 30 9" />
+      <path d="M16 23C20 23 23 21 25 18" />
+      <path d="M12 28C15 28 18 26 20 23" />
+    </svg>
+  );
+}
+
+function HandAmuletSvg({ size = 40, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 5L8 10V20C8 28 13.5 34 20 36C26.5 34 32 28 32 20V10L20 5Z" />
+      <path d="M20 13V27" />
+      <path d="M13 20H27" />
+    </svg>
+  );
+}
+
+function HandRupeeSvg({ size = 40, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="20" cy="20" r="15" />
+      <path d="M14 13H26" />
+      <path d="M14 18H24" />
+      <path d="M17 13V22C20 22 23 21 23 18C23 15 20 14 17 14" />
+      <path d="M17 22L25 30" />
+    </svg>
+  );
+}
+
+function HandScissorsSvg({ size = 40, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="14" r="5" />
+      <circle cx="12" cy="28" r="5" />
+      <path d="M16 17L30 31" />
+      <path d="M16 25L30 11" />
+    </svg>
+  );
+}
+
+function HandCheckSvg({ size = 64, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke={color} strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 36L26 50L54 14" />
+    </svg>
+  );
+}
 
 function speak(text, lang) {
   speakText(text, lang);
@@ -639,7 +1039,7 @@ function OnboardingView({ lang, setLang, step, setStep, onComplete, onStartVoice
       <button
         key={code}
         type="button"
-        className={`onboarding-language-tile ${isSelected ? 'selected' : ''}`}
+        className={`lang-script-tile ${isSelected ? 'selected' : ''}`}
         onClick={() => {
           setLang(code);
           speak(LANGUAGE_GREETINGS[code] || 'नमस्ते', code);
@@ -648,17 +1048,6 @@ function OnboardingView({ lang, setLang, step, setStep, onComplete, onStartVoice
         aria-label={`${LANGUAGE_META[code].label} (${LANGUAGE_META[code].promptName})`}
       >
         <span>{LANGUAGE_META[code].label}</span>
-        <span
-          className="tile-listen-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            setLang(code);
-            speak(LANGUAGE_GREETINGS[code] || 'नमस्ते', code);
-          }}
-          aria-label={`Listen to ${LANGUAGE_META[code].label}`}
-        >
-          <Volume2 size={16} />
-        </span>
       </button>
     );
   };
@@ -677,30 +1066,22 @@ function OnboardingView({ lang, setLang, step, setStep, onComplete, onStartVoice
           <span className="onboarding-step-counter">{step + 1} / 4</span>
         </div>
 
-        {/* Step 0: Language Selection with Audio Previews */}
+        {/* Step 0: Language Selection with 48px Huge Native Script Tiles */}
         {step === 0 && (
           <div className="onboarding-card">
-            <div className="onboarding-card-header">
-              <h1>{t.onboardingStep1Title}</h1>
-              <p>{t.onboardingStep1Sub}</p>
-              <button
-                type="button"
-                className="onboarding-listen-bar"
-                onClick={() => speak(`${t.onboardingStep1Title}. ${t.onboardingStep1Sub}`, lang)}
-              >
-                <Volume2 size={18} />
-                <span>{t.onboardingListenGuide}</span>
-              </button>
+            <h1 className="lang-screen-heading">{t.chooseLanguage || 'आपकी भाषा?'}</h1>
+            <p className="lang-screen-sub">{t.onboardingStep1Sub || 'अपनी भाषा चुनिए'}</p>
+            <div className="lang-script-grid">
+              {REGIONAL_LANGUAGE_CODES.map(languageButton)}
             </div>
-            <div className="onboarding-language-panel">
-              <div className="onboarding-language-grid">
-                {REGIONAL_LANGUAGE_CODES.map(languageButton)}
-              </div>
-              <p className="choice-label">{t.codeMixedGroup}</p>
-              <div className="onboarding-language-grid">
-                {CODE_MIXED_LANGUAGE_CODES.map(languageButton)}
-              </div>
-            </div>
+            {CODE_MIXED_LANGUAGE_CODES.length > 0 && (
+              <>
+                <p style={{ margin: '24px 0 8px', color: 'var(--muted)', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t.codeMixedGroup}</p>
+                <div className="lang-script-grid">
+                  {CODE_MIXED_LANGUAGE_CODES.map(languageButton)}
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -744,24 +1125,24 @@ function OnboardingView({ lang, setLang, step, setStep, onComplete, onStartVoice
                 className="onboarding-chip-row"
                 onClick={() => speak(t.quickPromptGas, lang)}
               >
-                <span>🌸 {t.quickPromptGas}</span>
-                <Volume2 size={16} />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><Flame size={15} aria-hidden="true" /> {t.quickPromptGas}</span>
+                <Volume2 size={16} aria-hidden="true" />
               </button>
               <button
                 type="button"
                 className="onboarding-chip-row"
                 onClick={() => speak(t.quickPromptSkill, lang)}
               >
-                <span>🧵 {t.quickPromptSkill}</span>
-                <Volume2 size={16} />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><Sparkles size={15} aria-hidden="true" /> {t.quickPromptSkill}</span>
+                <Volume2 size={16} aria-hidden="true" />
               </button>
               <button
                 type="button"
                 className="onboarding-chip-row"
                 onClick={() => speak(t.quickPromptMaternity, lang)}
               >
-                <span>👶 {t.quickPromptMaternity}</span>
-                <Volume2 size={16} />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><HeartHandshake size={15} aria-hidden="true" /> {t.quickPromptMaternity}</span>
+                <Volume2 size={16} aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -1128,7 +1509,6 @@ function App() {
   const [guidanceMode, setGuidanceMode] = useState(() => (navigator.onLine ? 'checking' : 'local'));
   const [showInternetPrompt, setShowInternetPrompt] = useState(false);
   const [showVoiceHelpModal, setShowVoiceHelpModal] = useState(false);
-  const [showVoiceDrawer, setShowVoiceDrawer] = useState(false);
   const [resourceSearch, setResourceSearch] = useState('');
   const [resourceSelection, setResourceSelection] = useState('pmuy-new-connection');
   const [detectedToast, setDetectedToast] = useState('');
@@ -1144,6 +1524,7 @@ function App() {
   const toastTimerRef = useRef(null);
 
   const t = useMemo(() => ({ ...copy.en, ...(copy[lang] || {}) }), [lang]);
+  const quickT = useMemo(() => quickTopicsTranslations[lang] || quickTopicsTranslations.en, [lang]);
   const languageMeta = getLanguageMeta(lang);
   const currentStep = steps.indexOf(screen);
   const progress = screen === 'home' ? 0 : screen === 'done' ? 100 : ((currentStep + 1) / steps.length) * 100;
@@ -1268,18 +1649,26 @@ function App() {
     return `${t.heroTitle}. ${t.heroBody}`;
   }, [screen, currentJourneyData, t]);
 
-  function speakSafe(textToSpeak, targetLang = lang) {
+  function speakSafe(textToSpeak, targetLang = lang, forceNew = true) {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    if (isSpeakingNow) {
-      window.speechSynthesis.cancel();
+    if (isSpeakingNow && !forceNew) {
+      stopSpeaking();
       setIsSpeakingNow(false);
       return;
     }
+    stopSpeaking();
     setIsSpeakingNow(true);
     speakText(textToSpeak, targetLang, {
+      onStart: () => setIsSpeakingNow(true),
       onEnd: () => setIsSpeakingNow(false),
     });
   }
+
+  function stopSpeakingNow() {
+    stopSpeaking();
+    setIsSpeakingNow(false);
+  }
+
 
   function applyHealth(result) {
     const liveReady = Boolean(result.ok && result.gemini === 'configured');
@@ -1387,15 +1776,14 @@ function App() {
             handleTranscriptReceived(result.transcript);
           } else {
             setVoiceStatus('idle');
-            setShowVoiceDrawer(true);
+            setVoiceErrorMsg(lang === 'hi' ? 'आवाज़ साफ नहीं आई, कृपया माइक दबाकर फिर बोलें।' : 'Could not hear clearly, please tap mic and speak again.');
           }
         } else {
           setVoiceStatus('idle');
-          setShowVoiceDrawer(true);
         }
       } catch {
         setVoiceStatus('idle');
-        setShowVoiceDrawer(true);
+        setVoiceErrorMsg(lang === 'hi' ? 'कृपया माइक दबाकर दोबारा बोलें।' : 'Please tap mic and try speaking again.');
       }
       return;
     }
@@ -1426,14 +1814,13 @@ function App() {
                 startMediaRecorderMode();
               } else {
                 setVoiceStatus('idle');
-                setVoiceErrorMsg('ऑफ़लाइन आवाज़ के लिए आप नीचे दिए गए सुझावों को छू सकती हैं।');
-                setShowVoiceDrawer(true);
+                setVoiceErrorMsg(lang === 'hi' ? 'इंटरनेट कनेक्शन धीमा है। कृपया दोबारा बोलें।' : 'Network connection slow. Please try speaking again.');
               }
             } else if (errorType === 'no-speech') {
               setVoiceStatus('idle');
             } else {
               setVoiceStatus('error');
-              setVoiceErrorMsg('माइक से आवाज़ नहीं मिली। कृपया दोबारा प्रयास करें या नीचे दिए बटन छुएं।');
+              setVoiceErrorMsg(lang === 'hi' ? 'माइक से आवाज़ नहीं मिली। कृपया दोबारा बोलें।' : 'Could not detect voice. Please tap mic and speak again.');
             }
           },
           onEnd: () => {
@@ -1455,10 +1842,9 @@ function App() {
       return;
     }
 
-    // Mode 3: Hardware or browser without audio API -> show quick voice prompts
+    // Mode 3: Hardware or browser without audio API
     setVoiceStatus('error');
-    setVoiceErrorMsg('आपके ब्राउज़र में माइक उपलब्ध नहीं है। आप नीचे दिए गए सुझावों को छूकर बात कर सकती हैं।');
-    setShowVoiceDrawer(true);
+    setVoiceErrorMsg(lang === 'hi' ? 'ब्राउज़र में माइक सक्षम नहीं है। कृपया अनुमति दें या लिखकर पूछें।' : 'Microphone not enabled in browser. Please allow or type.');
   }
 
   async function startMediaRecorderMode() {
@@ -1470,12 +1856,11 @@ function App() {
     } catch (err) {
       if (err.message === 'PERMISSION_DENIED') {
         setVoiceStatus('permission_denied');
-        setVoiceErrorMsg('माइक अनुमति बंद है। कृपया अनुमति दें।');
+        setVoiceErrorMsg(lang === 'hi' ? 'माइक अनुमति बंद है। कृपया अनुमति दें।' : 'Microphone permission needed. Please allow.');
         setShowVoiceHelpModal(true);
       } else {
         setVoiceStatus('error');
-        setVoiceErrorMsg('माइक शुरू नहीं हो सका। कृपया नीचे दिए गए सुझावों का उपयोग करें।');
-        setShowVoiceDrawer(true);
+        setVoiceErrorMsg(lang === 'hi' ? 'माइक शुरू नहीं हो सका। कृपया दोबारा प्रयास करें।' : 'Could not start microphone. Please try again.');
       }
     }
   }
@@ -1483,41 +1868,84 @@ function App() {
   function handleSelectScheme(schemeId) {
     if (schemeId === 'safety') {
       setShowSafety(true);
-      speakSafe(t.safetyTitle || 'महिला सुरक्षा हेल्पलाइन 181', lang);
+      const safetySpeech = LANGUAGE_SCHEME_INTRO_SPEECH.safety[lang] || t.safetyTitle || 'महिला सुरक्षा हेल्पलाइन 181';
+      speakSafe(safetySpeech, lang);
       return;
     }
     setActiveJourney(schemeId);
     setSelectedAnswer(null);
     setAssistantHint('');
     setScreen('eligibility');
-    const introSpeech = schemeId === 'skill-india'
-      ? (t.journeySkillTitle || 'प्रधानमंत्री कौशल विकास योजना')
-      : schemeId === 'pmmvy'
-      ? (t.journeyPmmvyTitle || 'प्रधानमंत्री मातृ वंदना योजना')
-      : (t.journeyPmuyTitle || 'प्रधानमंत्री उज्ज्वला योजना');
-    speakSafe(`${introSpeech}. ${t.guidanceReady || 'हम आपकी सहायता के लिए तैयार हैं'}`, lang);
+    const spokenIntro = LANGUAGE_SCHEME_INTRO_SPEECH[schemeId]?.[lang]
+      || `${schemeId === 'skill-india' ? (t.journeySkillTitle || 'प्रधानमंत्री कौशल विकास योजना') : schemeId === 'pmmvy' ? (t.journeyPmmvyTitle || 'प्रधानमंत्री मातृ वंदना योजना') : (t.journeyPmuyTitle || 'प्रधानमंत्री उज्ज्वला योजना')}. ${t.guidanceReady || 'हम आपकी सहायता के लिए तैयार हैं'}`;
+    speakSafe(spokenIntro, lang);
   }
 
   function routeQuery(rawQuery) {
     if (!rawQuery || !rawQuery.trim()) return;
     const normalized = rawQuery.trim().toLocaleLowerCase();
-    if (normalized.includes('सिलाई') || normalized.includes('कौशल') || normalized.includes('काम') || normalized.includes('हुनर') || normalized.includes('skill') || normalized.includes('tailor') || normalized.includes('training')) {
-      handleSelectScheme('skill-india');
+
+    // 1. Voice Answer while on eligibility question screen
+    if (screen === 'eligibility') {
+      const isAffirmative = ['हाँ', 'हा', 'haan', 'ha', 'yes', 'aama', 'avunu', 'hoy', 'ho', 'hã', 'হাঁ', 'হ্যাঁ', 'అవును', 'ஆம்', 'ಹೌದು', 'હા', 'ਹਾਂ', 'ହଁ'].some((w) => normalized.includes(w));
+      const isNegative = ['नहीं', 'ना', 'nahi', 'na', 'no', 'illa', 'ledu', 'naahi', 'nako', 'இல்லை', 'లేదు', 'না', 'नाही', 'ಇಲ್ಲ', 'ના', 'ਨਹੀਂ', 'ନାହିଁ'].some((w) => normalized.includes(w));
+      if (isNegative) {
+        answer('no');
+        return;
+      }
+      if (isAffirmative) {
+        answer('yes');
+        return;
+      }
+    }
+
+    // 2. Navigation commands
+    if (['आगे', 'अगला', 'next', 'continue', 'முன்னே', 'ಮುಂದೆ', 'पुढे', 'পরের'].some((w) => normalized.includes(w))) {
+      goNext();
       return;
     }
-    if (normalized.includes('मातृ') || normalized.includes('गर्भवती') || normalized.includes('बच्चा') || normalized.includes('शिशु') || normalized.includes('पोषण') || normalized.includes('maternity') || normalized.includes('pmmvy') || normalized.includes('5000')) {
-      handleSelectScheme('pmmvy');
+    if (['वापस', 'पीछे', 'back', 'previous', 'பின்னே', 'ಹಿಂದೆ', 'मागे', 'ফিরে'].some((w) => normalized.includes(w))) {
+      goBack();
       return;
     }
-    if (normalized.includes('सुरक्षा') || normalized.includes('मदद') || normalized.includes('पुलिस') || normalized.includes('181') || normalized.includes('helpline') || normalized.includes('safety') || normalized.includes('help')) {
-      handleSelectScheme('safety');
-      return;
-    }
-    if (normalized.includes('गैस') || normalized.includes('सिलेंडर') || normalized.includes('चूल्हा') || normalized.includes('उज्ज्वला') || normalized.includes('gas') || normalized.includes('pmuy')) {
-      handleSelectScheme('pmuy-new-connection');
+    if (['रुको', 'चुप', 'बंद', 'stop', 'quiet'].some((w) => normalized.includes(w))) {
+      stopSpeakingNow();
       return;
     }
 
+    // 3. Scheme triggers in all 15 Indian languages
+    if (GAS_KEYWORDS.some((k) => normalized.includes(k))) {
+      handleSelectScheme('pmuy-new-connection');
+      return;
+    }
+    if (SKILL_KEYWORDS.some((k) => normalized.includes(k))) {
+      handleSelectScheme('skill-india');
+      return;
+    }
+    if (MATERNITY_KEYWORDS.some((k) => normalized.includes(k))) {
+      handleSelectScheme('pmmvy');
+      return;
+    }
+    if (SAFETY_KEYWORDS.some((k) => normalized.includes(k))) {
+      handleSelectScheme('safety');
+      return;
+    }
+    if (RATION_KEYWORDS.some((k) => normalized.includes(k))) {
+      setResourceSearch(rawQuery.trim());
+      setResourceSelection('ration-card');
+      speakSafe(lang === 'hi' ? 'खाद्य सुरक्षा और राशन कार्ड की जानकारी यहां है।' : 'Ration card and food security guidance.', lang);
+      setScreen('resources');
+      return;
+    }
+    if (BANK_KEYWORDS.some((k) => normalized.includes(k))) {
+      setResourceSearch(rawQuery.trim());
+      setResourceSelection('jan-dhan');
+      speakSafe(lang === 'hi' ? 'जन धन बैंक खाता और सरकारी सहायता की जानकारी यहां है।' : 'Jan Dhan bank account guidance.', lang);
+      setScreen('resources');
+      return;
+    }
+
+    // 4. Catalog search fallback
     const matchingResource = RESOURCE_CATALOG.find((resource) => resource.keywords.some((keyword) => normalized.includes(keyword.toLocaleLowerCase())));
     if (matchingResource?.id === 'pmuy-new-connection') {
       handleSelectScheme('pmuy-new-connection');
@@ -1553,20 +1981,20 @@ function App() {
     if (!isOnline || guidanceMode !== 'live') {
       const guidance = getOfflineGuidance({ answer: value, language: lang, schemeId: activeJourney });
       setAssistantHint(`${guidance.answer} ${guidance.nextStep}`);
-      speakSafe(guidance.speakText, lang);
+      speakSafe(`${guidance.speakText} ${lang === 'hi' ? 'चलिए, अब कागज़ात देखते हैं।' : 'Now let us see the required documents.'}`, lang);
       setIsResponding(false);
       return;
     }
     try {
       const guidance = await getGeminiGuidance({ answer: value, language: lang, userMessage: message });
       setAssistantHint(`${guidance.answer} ${guidance.nextStep}`);
-      speakSafe(guidance.speakText, lang);
+      speakSafe(`${guidance.speakText} ${lang === 'hi' ? 'चलिए, अब कागज़ात देखते हैं।' : 'Now let us see the required documents.'}`, lang);
     } catch {
       const guidance = getOfflineGuidance({ answer: value, language: lang, schemeId: activeJourney });
       setAssistantHint(`${guidance.answer} ${guidance.nextStep}`);
       setGuidanceMode('local');
       setServiceError(false);
-      speakSafe(guidance.speakText, lang);
+      speakSafe(`${guidance.speakText} ${lang === 'hi' ? 'चलिए, अब कागज़ात देखते हैं।' : 'Now let us see the required documents.'}`, lang);
     } finally {
       setIsResponding(false);
     }
@@ -1591,6 +2019,8 @@ function App() {
   function changeLanguage(nextLang) {
     setLang(nextLang);
     setShowLanguage(false);
+    const greeting = LANGUAGE_SPOKEN_GREETINGS[nextLang] || copy[nextLang]?.heroTitle || 'नमस्ते';
+    speakSafe(greeting, nextLang);
   }
 
   function finishOnboarding() {
@@ -1744,126 +2174,297 @@ function App() {
 
           {screen === 'home' && (
             <section className="home-view page-enter">
-              <div className="home-context">
-                <span className="context-label">{t.today}</span>
-                <span className="practice-label"><ShieldCheck size={15} /> {t.practice}</span>
-              </div>
-              <div className="home-layout">
-                <div className="home-story">
-                  <h1>{t.heroTitle}</h1>
-                  <p className="lead-copy">{t.heroBody}</p>
+              {isSpeakingNow && (
+                <div className="voice-speaking-bar" role="status">
+                  <div className="speaking-wave-bars" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                  <span className="speaking-wave-text">
+                    {lang === 'hi' ? 'सेवा दीदी बोल रही हैं…' : 'Seva Didi is speaking…'}
+                  </span>
+                  <button
+                    type="button"
+                    className="stop-speech-btn"
+                    onClick={stopSpeakingNow}
+                    aria-label="Stop speaking"
+                  >
+                    <VolumeX size={15} />
+                    <span>{lang === 'hi' ? 'रोकें' : 'Stop'}</span>
+                  </button>
+                </div>
+              )}
 
-                  <div className="scheme-line" onClick={() => handleSelectScheme(activeJourney)} style={{ cursor: 'pointer' }} role="button" tabIndex={0}>
-                    <span className="scheme-symbol">
-                      {activeJourney === 'skill-india' ? <Sparkles size={21} /> : activeJourney === 'pmmvy' ? <Heart size={21} /> : <Flame size={21} />}
-                    </span>
-                    <span><strong>{currentJourneyData.title}</strong><small>{currentJourneyData.sub}</small></span>
+              <div className="home-dynamic-layout">
+                <div className="home-primary-col">
+                  <div className="home-headline-row">
+                    <div>
+                      <h1 className="home-headline">{t.greeting || 'नमस्ते।'}</h1>
+                      <p className="home-question">{t.tellMe || 'बताइए, क्या चाहिए?'}</p>
+                    </div>
+                    <button
+                      type="button"
+                      className={`listen-screen-pill ${isSpeakingNow ? 'active' : ''}`}
+                      onClick={() => {
+                        if (isSpeakingNow) {
+                          stopSpeakingNow();
+                        } else {
+                          speakSafe(LANGUAGE_SPOKEN_GREETINGS[lang] || `${t.greeting}. ${t.tellMe}`, lang);
+                        }
+                      }}
+                      aria-label="Listen aloud"
+                    >
+                      {isSpeakingNow ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                      <span>{isSpeakingNow ? (lang === 'hi' ? 'रोकें' : 'Stop') : (lang === 'hi' ? 'सुनिए' : 'Listen')}</span>
+                    </button>
                   </div>
 
-                  {/* 1-Tap Quick Suggestions */}
-                  <div className="quick-suggestions-box">
-                    <p className="quick-suggestions-title">
-                      <Volume2 size={15} /> <span>{lang === 'hi' ? 'सीधे एक बार छूकर पूछें (या बोलें):' : 'Tap once to ask or speak:'}</span>
-                    </p>
-                    <div className="quick-suggestions-list">
-                      <button type="button" className={`quick-chip ${activeJourney === 'pmuy-new-connection' ? 'active' : ''}`} onClick={() => handleSelectScheme('pmuy-new-connection')}>
-                        <span>🌸</span> <span>{t.quickGas || 'गैस कनेक्शन'}</span>
-                      </button>
-                      <button type="button" className={`quick-chip ${activeJourney === 'skill-india' ? 'active' : ''}`} onClick={() => handleSelectScheme('skill-india')}>
-                        <span>🧵</span> <span>{t.quickSkill || 'सिलाई / हुनर केंद्र'}</span>
-                      </button>
-                      <button type="button" className={`quick-chip ${activeJourney === 'pmmvy' ? 'active' : ''}`} onClick={() => handleSelectScheme('pmmvy')}>
-                        <span>👶</span> <span>{t.quickMaternity || 'मातृत्व सहायता ₹5000'}</span>
-                      </button>
-                      <button type="button" className="quick-chip" onClick={() => { setInputText('मुफ्त राशन योजना'); routeQuery('मुफ्त राशन'); }}>
-                        <span>🌾</span> <span>{t.quickRation || 'मुफ्त राशन'}</span>
-                      </button>
-                      <button type="button" className="quick-chip" onClick={() => handleSelectScheme('safety')}>
-                        <span>🛡️</span> <span>{t.quickSafety || 'महिला सुरक्षा 181'}</span>
-                      </button>
-                      <button type="button" className="quick-chip" onClick={() => { setInputText('जन धन बैंक खाता'); routeQuery('जन धन बैंक खाता'); }}>
-                        <span>💳</span> <span>{t.quickJanDhan || 'जन धन खाता'}</span>
-                      </button>
+                  {/* Screen 1: The 96px Hand-Drawn Rangoli Dot Mic Hero */}
+                  <div className="hand-drawn-mic-box">
+                    <button
+                      type="button"
+                      className={`hand-drawn-mic-button ${voiceStatus === 'listening' || voiceStatus === 'recording' ? 'recording' : ''}`}
+                      onClick={toggleVoice}
+                      aria-label={voiceStatus === 'listening' ? t.listening : t.speakAsk}
+                    >
+                      {voiceStatus === 'listening' || voiceStatus === 'recording' ? (
+                        <MicOff size={44} color="#FAF8F5" aria-hidden="true" />
+                      ) : (
+                        <Mic size={44} color="#FAF8F5" aria-hidden="true" />
+                      )}
+                    </button>
+
+                    <div className="mic-status-primary">
+                      {voiceStatus === 'listening'
+                        ? (lang === 'hi' ? 'सुन रहे हैं…' : 'Listening…')
+                        : voiceStatus === 'recording'
+                        ? (lang === 'hi' ? 'रिकॉर्ड हो रहा है (रोकने के लिए दबाएं)' : 'Recording (tap to finish)')
+                        : voiceStatus === 'processing'
+                        ? (lang === 'hi' ? 'समझ रहे हैं…' : 'Analyzing voice…')
+                        : (lang === 'hi' ? 'बोलने के लिए दबाइए' : 'Tap to speak in your language')}
+                    </div>
+                    <div className="mic-status-secondary">
+                      {voiceStatus === 'idle'
+                        ? (lang === 'hi' ? 'दबाएं और अपनी भाषा में बोलें' : 'Speak naturally in your mother tongue')
+                        : (lang === 'hi' ? 'बोलने के बाद दोबारा दबाएं' : 'Tap again when finished speaking')}
+                    </div>
+
+                    {/* Quick 1-touch spoken option chips for women */}
+                    <div className="quick-voice-chips-container">
+                      <span className="quick-voice-chips-label">
+                        {lang === 'hi' ? 'सीधे बोलकर या दबाकर पूछें:' : 'Or tap to speak in 1 touch:'}
+                      </span>
+                      <div className="quick-voice-chips-row">
+                        <button
+                          type="button"
+                          className="quick-voice-chip"
+                          onClick={() => handleSelectScheme('pmuy-new-connection')}
+                        >
+                          <HandFlameSvg size={16} color="var(--accent)" />
+                          <span>{lang === 'hi' ? 'गैस कनेक्शन' : 'LPG Gas'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="quick-voice-chip"
+                          onClick={() => handleSelectScheme('skill-india')}
+                        >
+                          <HandScissorsSvg size={16} color="var(--accent)" />
+                          <span>{lang === 'hi' ? 'सिलाई हुनर' : 'Tailoring'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="quick-voice-chip"
+                          onClick={() => handleSelectScheme('pmmvy')}
+                        >
+                          <HandLeafSvg size={16} color="var(--accent)" />
+                          <span>{lang === 'hi' ? 'मातृत्व ₹5000' : 'Maternity'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="quick-voice-chip"
+                          onClick={() => handleSelectScheme('safety')}
+                        >
+                          <HandAmuletSvg size={16} color="var(--accent)" />
+                          <span>{lang === 'hi' ? 'सुरक्षा 181' : 'Safety 181'}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="ask-box">
-                  <div className="ask-box-heading">
-                    <span>{t.tellMe}</span>
-                    <span className="ready-dot"><i /> {voiceStatus === 'listening' ? (lang === 'hi' ? 'सुन रहे हैं…' : 'Listening…') : voiceStatus === 'recording' ? (lang === 'hi' ? 'रिकॉर्ड हो रहा है…' : 'Recording audio…') : voiceStatus === 'processing' ? (lang === 'hi' ? 'समझ रहे हैं…' : 'Processing…') : t.guidanceReady}</span>
-                  </div>
-
-                  <button
-                    className={`voice-action ${voiceStatus === 'listening' || voiceStatus === 'recording' ? 'listening' : ''}`}
-                    onClick={toggleVoice}
-                    aria-label={voiceStatus === 'listening' ? t.listening : t.speakAsk}
-                  >
-                    <span className="voice-icon">
-                      {voiceStatus === 'listening' || voiceStatus === 'recording' ? <MicOff size={23} /> : <Mic size={23} />}
-                    </span>
-                    <span className="voice-copy">
-                      <strong>
-                        {voiceStatus === 'listening'
-                          ? (lang === 'hi' ? 'सुन रहे हैं…' : 'Listening…')
-                          : voiceStatus === 'recording'
-                          ? (lang === 'hi' ? 'रिकॉर्ड हो रहा है (रोकने के लिए दबाएं)' : 'Recording (tap to finish)')
-                          : voiceStatus === 'processing'
-                          ? (lang === 'hi' ? 'समझ रहे हैं…' : 'Analyzing voice…')
-                          : t.speakAsk}
-                      </strong>
-                      <small>{voiceStatus === 'idle' ? t.tapToSpeak : (lang === 'hi' ? 'बोलने के बाद दोबारा दबाएं' : 'Tap again when finished')}</small>
-                    </span>
-                    <ArrowRight size={20} />
-                  </button>
 
                   {voiceErrorMsg && (
                     <div className="voice-error-banner" role="status">
                       <AlertCircle size={16} />
                       <span>{voiceErrorMsg}</span>
-                      <button type="button" onClick={() => setShowVoiceDrawer(true)} className="voice-error-action">
-                        {lang === 'hi' ? 'सुझाव देखें' : 'View prompts'}
+                      <button type="button" onClick={() => setVoiceErrorMsg('')} className="voice-error-action" aria-label={t.close}>
+                        <X size={14} />
                       </button>
                     </div>
                   )}
 
                   {message && (
-                    <div className="transcript-line" aria-live="polite">
-                      <span className="transcript-mark"><Check size={13} /></span>
-                      <span><small>{t.heard}</small><strong>{message}</strong></span>
-                      <button onClick={() => { setMessage(''); setInputText(''); }} aria-label={t.clear}><X size={15} /></button>
+                    <div className="transcript-card" aria-live="polite">
+                      <Check size={16} color="var(--accent)" />
+                      <span>
+                        <small>{t.heard || 'आपने कहा'}:</small>
+                        <strong>{message}</strong>
+                      </span>
+                      <button type="button" onClick={() => { setMessage(''); setInputText(''); }} aria-label={t.clear}>
+                        <X size={16} />
+                      </button>
                     </div>
                   )}
 
-                  <div className="or-rule"><span>{t.orWrite}</span></div>
+                  {/* Full-width clean text entry row */}
+                  <div className="text-entry-box">
+                    <span className="text-entry-label">{t.orWrite || 'या लिखकर पूछिए'}</span>
+                    <form className="text-entry-form" onSubmit={submitRequest}>
+                      <input
+                        value={inputText}
+                        onChange={handleTextInputChange}
+                        aria-label={t.inputPlaceholder}
+                        placeholder={lang === 'hi' ? 'जैसे: मुझे गैस कनेक्शन चाहिए या राशन कार्ड' : t.inputPlaceholder}
+                      />
+                      <button type="submit" disabled={!inputText.trim()} aria-label={t.send}>
+                        <Send size={18} />
+                      </button>
+                    </form>
+                  </div>
 
-                  <form className="text-entry" onSubmit={submitRequest}>
-                    <input
-                      value={inputText}
-                      onChange={handleTextInputChange}
-                      aria-label={t.inputPlaceholder}
-                      placeholder={t.inputPlaceholder}
-                    />
-                    <button type="submit" disabled={!inputText.trim()} aria-label={t.send}><Send size={18} /></button>
-                  </form>
-
-                  <div className="voice-bottom-bar">
-                    <button type="button" className="voice-simulator-trigger" onClick={() => setShowVoiceDrawer(true)}>
-                      <Volume2 size={14} /> <span>{lang === 'hi' ? 'बिना माइक के आवाज़ के सवाल देखें' : 'Sample voice prompts'}</span>
-                    </button>
-                    <p className="privacy-note"><LockKeyhole size={14} /> {t.practice}</p>
+                  <div className="aux-triggers" style={{ justifyContent: 'center' }}>
+                    <span className="privacy-badge">
+                      <LockKeyhole size={12} /> {lang === 'hi' ? 'सुरक्षित व निजी' : 'Safe & Private'}
+                    </span>
                   </div>
                 </div>
-              </div>
 
-              <div className="home-footer">
-                <div className="steps-preview">
-                  <strong>{t.threeSteps}</strong>
-                  <span>{t.threeStepsSub}</span>
-                </div>
-                <div className="home-footer-actions">
-                  <button className="service-link" onClick={openResourceHub}><BookOpen size={16} /> {t.browseServices}</button>
-                  <button className="start-link" onClick={() => handleSelectScheme(activeJourney)}>{t.startJourney} <ArrowRight size={17} /></button>
+                <div className="home-secondary-col">
+                  {/* Screen 3: Services Section (Full width rows on #F0EDE8) */}
+                  <div className="service-section">
+                    <h2 className="service-section-title">{lang === 'hi' ? 'सीधी सेवा चुनिए' : 'Or choose a service'}</h2>
+                    <div className="service-rows-list">
+                      <button
+                        type="button"
+                        className={`service-row-button ${activeJourney === 'pmuy-new-connection' ? 'active' : ''}`}
+                        onClick={() => handleSelectScheme('pmuy-new-connection')}
+                      >
+                        <div className="service-row-icon">
+                          <HandFlameSvg size={26} color="var(--accent)" />
+                        </div>
+                        <div className="service-row-copy">
+                          <strong>{lang === 'hi' ? 'प्रधानमंत्री उज्ज्वला योजना' : 'PM Ujjwala Yojana'}</strong>
+                          <small>{lang === 'hi' ? 'मुफ्त गैस कनेक्शन और पहला सिलेंडर' : 'Free LPG connection & first cylinder'}</small>
+                        </div>
+                        <ArrowRight size={18} className="service-row-arrow" />
+                      </button>
+
+                      <button
+                        type="button"
+                        className="service-row-button"
+                        onClick={() => {
+                          const q = lang === 'hi' ? 'मुफ्त राशन योजना' : 'free ration food security';
+                          setInputText(q);
+                          routeQuery(q);
+                        }}
+                      >
+                        <div className="service-row-icon">
+                          <HandWheatSvg size={26} color="var(--accent)" />
+                        </div>
+                        <div className="service-row-copy">
+                          <strong>{lang === 'hi' ? 'राशन कार्ड व खाद्य सुरक्षा' : 'Ration Card & Food Security'}</strong>
+                          <small>{lang === 'hi' ? 'मुफ्त अनाज व राशन कार्ड में नाम जोड़ना' : 'Free food grains & NFSA registration'}</small>
+                        </div>
+                        <ArrowRight size={18} className="service-row-arrow" />
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`service-row-button ${activeJourney === 'pmmvy' ? 'active' : ''}`}
+                        onClick={() => handleSelectScheme('pmmvy')}
+                      >
+                        <div className="service-row-icon">
+                          <HandLeafSvg size={26} color="var(--accent)" />
+                        </div>
+                        <div className="service-row-copy">
+                          <strong>{lang === 'hi' ? 'प्रधानमंत्री मातृ वंदना योजना' : 'PM Matru Vandana Yojana'}</strong>
+                          <small>{lang === 'hi' ? 'गर्भवती महिलाओं को ₹5,000 की नकद मदद' : '₹5,000 maternity cash assistance'}</small>
+                        </div>
+                        <ArrowRight size={18} className="service-row-arrow" />
+                      </button>
+
+                      <button
+                        type="button"
+                        className="service-row-button"
+                        onClick={() => handleSelectScheme('safety')}
+                      >
+                        <div className="service-row-icon">
+                          <HandAmuletSvg size={26} color="var(--accent)" />
+                        </div>
+                        <div className="service-row-copy">
+                          <strong>{lang === 'hi' ? 'महिला हेल्पलाइन 181' : 'Women Helpline 181'}</strong>
+                          <small>{lang === 'hi' ? '24 घंटे मुफ्त सुरक्षा और कानूनी सलाह' : '24x7 emergency & legal counseling'}</small>
+                        </div>
+                        <ArrowRight size={18} className="service-row-arrow" />
+                      </button>
+
+                      <button
+                        type="button"
+                        className="service-row-button"
+                        onClick={() => {
+                          const q = lang === 'hi' ? 'जन धन बैंक खाता' : 'jan dhan bank account';
+                          setInputText(q);
+                          routeQuery(q);
+                        }}
+                      >
+                        <div className="service-row-icon">
+                          <HandRupeeSvg size={26} color="var(--accent)" />
+                        </div>
+                        <div className="service-row-copy">
+                          <strong>{lang === 'hi' ? 'जन धन बैंक खाता' : 'Jan Dhan Bank Account'}</strong>
+                          <small>{lang === 'hi' ? 'बिना पैसे बैंक खाता व ₹10,000 ओवरड्राफ्ट' : 'Zero balance savings & direct transfer'}</small>
+                        </div>
+                        <ArrowRight size={18} className="service-row-arrow" />
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`service-row-button ${activeJourney === 'skill-india' ? 'active' : ''}`}
+                        onClick={() => handleSelectScheme('skill-india')}
+                      >
+                        <div className="service-row-icon">
+                          <HandScissorsSvg size={26} color="var(--accent)" />
+                        </div>
+                        <div className="service-row-copy">
+                          <strong>{lang === 'hi' ? 'हुनर सीखें — सिलाई व कौशल' : 'Skill India — Tailoring & Craft'}</strong>
+                          <small>{lang === 'hi' ? 'मुफ्त प्रशिक्षण और सिलाई मशीन सहायता' : 'Free vocational training & sewing grants'}</small>
+                        </div>
+                        <ArrowRight size={18} className="service-row-arrow" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 48px Gap Pause before Primary Action Button per Section 2 */}
+                  <div className="pause-gap-48">
+                    <button
+                      type="button"
+                      className="primary-action-btn"
+                      onClick={() => handleSelectScheme(activeJourney)}
+                    >
+                      <span>{t.continue || 'आगे'}</span>
+                      <ArrowRight size={22} />
+                    </button>
+                  </div>
+
+                  <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                    <button type="button" className="quiet-action-link" onClick={openResourceHub}>
+                      {lang === 'hi' ? 'सभी सरकारी मदद और निर्देशिका देखें' : 'Browse all government services'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </section>
@@ -1887,113 +2488,230 @@ function App() {
 
           {screen === 'eligibility' && (
             <section className="journey-view page-enter">
-              <div className="journey-heading"><h1>{currentJourneyData.questionTitle}</h1></div>
-              <p className="journey-intro">{currentJourneyData.questionHint}</p>
-              <div className="choice-list">
-                <button className={`choice-row ${selectedAnswer === 'no' ? 'active' : ''}`} onClick={() => answer('no')}>
-                  <span className="choice-radio">{selectedAnswer === 'no' && <Check size={14} />}</span>
-                  <span className="choice-copy"><strong>{currentJourneyData.no}</strong><small>{currentJourneyData.noSub}</small></span>
-                  <ArrowRight size={18} />
+              <div className="step-question-header">
+                <div style={{ flex: 1 }}>
+                  <h1 className="step-question-text">{currentJourneyData.questionTitle}</h1>
+                  <p className="step-question-sub">{currentJourneyData.questionHint}</p>
+                </div>
+                <button
+                  type="button"
+                  className={`listen-screen-pill ${isSpeakingNow ? 'active' : ''}`}
+                  onClick={() => {
+                    if (isSpeakingNow) {
+                      stopSpeakingNow();
+                    } else {
+                      speakSafe(`${currentJourneyData.questionTitle}. ${currentJourneyData.questionHint}`, lang);
+                    }
+                  }}
+                  aria-label="Listen to question"
+                >
+                  {isSpeakingNow ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                  <span>{isSpeakingNow ? (lang === 'hi' ? 'रोकें' : 'Stop') : (lang === 'hi' ? 'सवाल सुनें' : 'Listen')}</span>
                 </button>
-                <button className={`choice-row ${selectedAnswer === 'yes' ? 'active' : ''}`} onClick={() => answer('yes')}>
-                  <span className="choice-radio">{selectedAnswer === 'yes' && <Check size={14} />}</span>
-                  <span className="choice-copy"><strong>{currentJourneyData.yes}</strong><small>{currentJourneyData.yesSub}</small></span>
-                  <ArrowRight size={18} />
+              </div>
+
+              {/* Dedicated Spoken Voice Answer row for non-reading women */}
+              <div className="voice-answer-row">
+                <button
+                  type="button"
+                  className={`voice-answer-button ${voiceStatus === 'listening' ? 'listening' : ''}`}
+                  onClick={toggleVoice}
+                  aria-label="Answer with voice"
+                >
+                  <Mic size={22} />
+                  <span>
+                    {voiceStatus === 'listening'
+                      ? (lang === 'hi' ? 'सुन रहे हैं… हाँ या नहीं बोलें' : 'Listening… say Yes or No')
+                      : (lang === 'hi' ? 'माइक दबाकर बोलें: हाँ या नहीं' : 'Tap mic and say Yes or No')}
+                  </span>
+                </button>
+              </div>
+
+              {/* Screen 5: Stacked 72px buttons without icons per Section 3 */}
+              <div className="decision-button-stack">
+                <button
+                  type="button"
+                  className="decision-button-yes"
+                  onClick={() => answer('yes')}
+                >
+                  {currentJourneyData.yes}
+                </button>
+                <button
+                  type="button"
+                  className="decision-button-no"
+                  onClick={() => answer('no')}
+                >
+                  {currentJourneyData.no}
                 </button>
               </div>
 
               {selectedAnswer && (
-                <div className={`answer-note ${serviceError ? 'error' : ''}`} aria-live="polite">
-                  <Info size={17} />
-                  <span>
-                    <strong>{serviceError ? t.serviceUnavailable : (selectedAnswer === 'no' ? currentJourneyData.goodTitle : currentJourneyData.okayTitle)}</strong>
-                    <small>{isResponding ? (lang === 'hi' ? 'थोड़ा रुकिए…' : 'One moment…') : serviceError ? t.serviceUnavailable : assistantHint || (selectedAnswer === 'no' ? currentJourneyData.goodBody : currentJourneyData.okayBody)}</small>
-                  </span>
+                <div className={`decision-note-box ${serviceError ? 'error' : ''}`} aria-live="polite">
+                  <strong>{serviceError ? t.serviceUnavailable : (selectedAnswer === 'no' ? currentJourneyData.goodTitle : currentJourneyData.okayTitle)}</strong>
+                  <small>{isResponding ? (lang === 'hi' ? 'थोड़ा रुकिए…' : 'One moment…') : serviceError ? t.serviceUnavailable : assistantHint || (selectedAnswer === 'no' ? currentJourneyData.goodBody : currentJourneyData.okayBody)}</small>
                 </div>
               )}
 
-              <div className="journey-actions">
-                <button className="listen-button" onClick={() => speakSafe(questionToRead, lang)}>
-                  {isSpeakingNow ? <VolumeX size={17} /> : <Volume2 size={17} />}
-                  {isSpeakingNow ? (lang === 'hi' ? 'रोकें' : 'Stop') : t.hearQuestion}
-                </button>
-                <button className="continue-button" onClick={goNext} disabled={!selectedAnswer}>{t.continue} <ArrowRight size={18} /></button>
+              <div className="pause-gap-48" style={{ marginTop: '24px' }}>
+                {selectedAnswer ? (
+                  <button type="button" className="primary-action-btn" onClick={goNext}>
+                    <span>{t.continue || 'आगे'}</span>
+                    <ArrowRight size={22} />
+                  </button>
+                ) : (
+                  <button type="button" className="quiet-action-link" onClick={() => speakSafe(questionToRead, lang)}>
+                    {isSpeakingNow ? (lang === 'hi' ? 'रोकें' : 'Stop') : t.hearQuestion}
+                  </button>
+                )}
               </div>
             </section>
           )}
 
           {screen === 'documents' && (
             <section className="journey-view page-enter">
-              <div className="journey-heading"><h1>{currentJourneyData.documentsTitle}</h1></div>
-              <p className="journey-intro">{currentJourneyData.documentsBody}</p>
-              <ul className="document-list">
-                {currentJourneyData.docs.map((item) => (
-                  <li key={item}>
-                    <span className="document-thumb" aria-hidden="true"><FileText size={14} /></span>
-                    <strong>{item}</strong>
-                    <Check size={18} />
-                  </li>
-                ))}
-              </ul>
-              <div className="privacy-note large">
-                <LockKeyhole size={17} />
-                <span><strong>{t.privateTitle}</strong><small>{t.privateBody}</small></span>
-              </div>
-              <div className="journey-actions">
-                <button className="listen-button" onClick={() => speakSafe(questionToRead, lang)}>
-                  {isSpeakingNow ? <VolumeX size={17} /> : <Volume2 size={17} />}
-                  {isSpeakingNow ? (lang === 'hi' ? 'रोकें' : 'Stop') : t.readAloud}
-                </button>
-                <button className="continue-button" onClick={goNext}>{t.continue} <ArrowRight size={18} /></button>
+              <div className="documents-dynamic-layout">
+                <div className="documents-primary-col">
+                  {/* Screen 4: 72px Hero Benefit Amount with Listen Pill */}
+                  <div className="hero-benefit-banner">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span className="hero-benefit-label">{lang === 'hi' ? 'सीधा सरकारी लाभ' : 'Direct Government Benefit'}</span>
+                      <button
+                        type="button"
+                        className={`listen-screen-pill ${isSpeakingNow ? 'active' : ''}`}
+                        onClick={() => {
+                          if (isSpeakingNow) {
+                            stopSpeakingNow();
+                          } else {
+                            speakSafe(`${currentJourneyData.documentsTitle}. ${currentJourneyData.documentsBody}. ${currentJourneyData.docs.join('. ')}`, lang);
+                          }
+                        }}
+                        aria-label="Listen to documents list"
+                      >
+                        {isSpeakingNow ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                        <span>{isSpeakingNow ? (lang === 'hi' ? 'रोकें' : 'Stop') : (lang === 'hi' ? 'कागज़ात सुनें' : 'Listen')}</span>
+                      </button>
+                    </div>
+
+                    <div className="hero-benefit-amount">
+                      {activeJourney === 'pmuy-new-connection' ? (lang === 'hi' ? 'मुफ्त गैस' : 'Free LPG') : activeJourney === 'pmmvy' ? '₹5,000' : '₹300'}
+                    </div>
+                    <p className="hero-benefit-note">{currentJourneyData.documentsBody}</p>
+                  </div>
+                </div>
+
+                <div className="documents-secondary-col">
+                  {/* Real scanned-paper ticket thumbnails tilted */}
+                  <ul className="ticket-doc-list">
+                    {currentJourneyData.docs.map((item) => (
+                      <li key={item} className="ticket-doc-item">
+                        <span className="ticket-doc-thumb" aria-hidden="true"><FileText size={15} /></span>
+                        <strong>{item}</strong>
+                        <Check size={18} />
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="pause-gap-48" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <button type="button" className="primary-action-btn" onClick={goNext}>
+                      <span>{t.continue || 'आगे'}</span>
+                      <ArrowRight size={22} />
+                    </button>
+                    <button type="button" className="quiet-action-link" onClick={() => speakSafe(questionToRead, lang)}>
+                      {isSpeakingNow ? (lang === 'hi' ? 'रोकें' : 'Stop') : (t.readAloud || 'बोलकर सुनें')}
+                    </button>
+                  </div>
+                </div>
               </div>
             </section>
           )}
 
           {screen === 'visit' && (
             <section className="journey-view page-enter">
-              <div className="journey-heading"><h1>{currentJourneyData.nextTitle}</h1></div>
-              <p className="journey-intro">{currentJourneyData.nextBody}</p>
-              <blockquote className="say-line">
-                <span className="say-icon"><Volume2 size={20} /></span>
-                <p>{currentJourneyData.sayThis}</p>
-                <button onClick={() => speakSafe(currentJourneyData.sayThis, lang)} aria-label={t.readAloud}><Volume2 size={17} /></button>
-              </blockquote>
-              <div className="small-reminders">
-                <span><FileText size={17} /> {currentJourneyData.bring}</span>
-                <span><HeartHandshake size={17} /> {currentJourneyData.askHelp}</span>
-              </div>
-              <div className="journey-actions">
-                <button className="listen-button" onClick={() => speakSafe(questionToRead, lang)}>
-                  {isSpeakingNow ? <VolumeX size={17} /> : <Volume2 size={17} />}
-                  {isSpeakingNow ? (lang === 'hi' ? 'रोकें' : 'Stop') : t.readAloud}
+              <div className="step-question-header">
+                <div style={{ flex: 1 }}>
+                  <h1 className="step-question-text">{currentJourneyData.nextTitle}</h1>
+                  <p className="step-question-sub">{currentJourneyData.nextBody}</p>
+                </div>
+                <button
+                  type="button"
+                  className={`listen-screen-pill ${isSpeakingNow ? 'active' : ''}`}
+                  onClick={() => {
+                    if (isSpeakingNow) {
+                      stopSpeakingNow();
+                    } else {
+                      speakSafe(`${currentJourneyData.nextTitle}. ${currentJourneyData.nextBody}. ${currentJourneyData.sayThis}`, lang);
+                    }
+                  }}
+                  aria-label="Listen to visit instructions"
+                >
+                  {isSpeakingNow ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                  <span>{isSpeakingNow ? (lang === 'hi' ? 'रोकें' : 'Stop') : (lang === 'hi' ? 'सुनिए' : 'Listen')}</span>
                 </button>
-                <button className="continue-button" onClick={goNext}>{t.finish} <Check size={18} /></button>
+              </div>
+
+              <div style={{ margin: '24px 0', padding: '16px', background: 'var(--warm)', borderRadius: '4px' }}>
+                <p style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'var(--accent)', lineHeight: '1.5' }}>{currentJourneyData.sayThis}</p>
+                <button type="button" className="quiet-action-link" onClick={() => speakSafe(currentJourneyData.sayThis, lang)} style={{ marginTop: '8px' }}>
+                  <Volume2 size={16} /> <span>{t.readAloud}</span>
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', margin: '16px 0', color: 'var(--muted)', fontSize: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><FileText size={16} color="var(--accent)" /> <span>{currentJourneyData.bring}</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><HeartHandshake size={16} color="var(--accent)" /> <span>{currentJourneyData.askHelp}</span></div>
+              </div>
+
+              <div className="pause-gap-48" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <a
+                  className="listen-button full"
+                  href={`tel:${currentJourneyData.phone || '14428'}`}
+                  style={{ justifyContent: 'center', fontWeight: 'bold' }}
+                >
+                  <Phone size={18} /> {lang === 'hi' ? 'सीधे फोन कॉल करें' : 'Call toll-free'}: {currentJourneyData.phone || '14428'}
+                </a>
+                <button type="button" className="primary-action-btn" onClick={goNext}>
+                  <span>{t.finish || 'आगे'}</span>
+                  <Check size={22} />
+                </button>
               </div>
             </section>
           )}
 
           {screen === 'done' && (
             <section className="done-view page-enter">
-              <span className="done-mark" aria-hidden="true" />
-              <small>{t.brand}</small>
-              <h1>{currentJourneyData.doneTitle}</h1>
-              <p>{currentJourneyData.doneBody}</p>
-              <div className="helpline-stamp">
-                <small>{currentJourneyData.helplineLabel}</small>
-                <a href={`tel:${currentJourneyData.phone || '14428'}`}><strong>{currentJourneyData.helplineNumber}</strong></a>
+              {/* Screen 6: 64px Hand Checkmark */}
+              <div className="done-check-wrapper">
+                <HandCheckSvg size={64} color="var(--accent)" />
               </div>
-              <div className="done-actions">
-                <a className="continue-button official-link" href={currentJourneyData.officialUrl} onClick={handleOfficialClick} target="_blank" rel="noreferrer">
+              <h1 className="done-title">{lang === 'hi' ? 'हो गया।' : currentJourneyData.doneTitle}</h1>
+              <p className="done-description">{currentJourneyData.doneBody}</p>
+
+              {/* 32px Stamped Monospace Helpline */}
+              <div className="stamped-helpline">
+                <small>{currentJourneyData.helplineLabel || (lang === 'hi' ? 'सीधा सरकारी हेल्पलाइन नंबर' : 'Official Helpline')}</small>
+                <div style={{ marginTop: '4px' }}>
+                  <a href={`tel:${currentJourneyData.phone || '14480'}`} className="stamped-helpline-number">
+                    {currentJourneyData.helplineNumber || '14480'}
+                  </a>
+                </div>
+              </div>
+
+              <div className="pause-gap-48" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <button type="button" className="primary-action-btn" onClick={restart}>
+                  <span>{lang === 'hi' ? 'पक्का' : (t.confirm || 'Confirmed')}</span>
+                  <ArrowRight size={22} />
+                </button>
+                <a
+                  className="secondary-action-btn"
+                  href={currentJourneyData.officialUrl}
+                  onClick={handleOfficialClick}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ textDecoration: 'none' }}
+                >
                   <ArrowRight size={17} /> {t.official}
                 </a>
-                <button className="listen-button" onClick={() => speakSafe(`${currentJourneyData.doneTitle}. ${currentJourneyData.doneBody}`, lang)}>
-                  <Volume2 size={17} /> {t.readAloud}
-                </button>
-                <button className="listen-button" onClick={restart}>
-                  <RotateCcw size={17} /> {t.restart}
-                </button>
               </div>
-              <div className="done-note"><ShieldCheck size={16} /> {t.practice}</div>
             </section>
           )}
         </main>
@@ -2001,47 +2719,7 @@ function App() {
 
       {!showOnboarding && <footer className="app-footer"><span>{t.practice}</span><span>{t.brand} · 2026</span></footer>}
 
-      {/* Voice Prompts & Simulator Drawer */}
-      {showVoiceDrawer && (
-        <div className="modal-backdrop" onClick={() => setShowVoiceDrawer(false)}>
-          <div className="safety-modal voice-drawer-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="drawer-title">
-            <button className="modal-close" onClick={() => setShowVoiceDrawer(false)} aria-label={t.close}><X size={18} /></button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#C0392B', marginBottom: '8px' }}>
-              <Volume2 size={24} />
-              <h2 id="drawer-title" style={{ margin: 0, fontSize: '1.25rem' }}>{lang === 'hi' ? 'बोलकर पूछने के उदाहरण' : 'Sample Voice Queries'}</h2>
-            </div>
-            <p style={{ margin: '0 0 14px', fontSize: '0.92rem', color: '#555' }}>
-              {lang === 'hi' ? 'किसी भी वाक्य को एक बार छुएं। सहेली उसे तुरंत सुनेगी और सही जानकारी देगी:' : 'Tap any spoken question to test guidance:'}
-            </p>
-            <div className="drawer-prompt-list">
-              {[
-                { label: '🌸 मुझे नया गैस कनेक्शन चाहिए', text: 'मुझे नया गैस कनेक्शन चाहिए', scheme: 'pmuy-new-connection' },
-                { label: '🧵 मुझे सिलाई व हुनर सीखना है', text: 'मुझे सिलाई सीखना है', scheme: 'skill-india' },
-                { label: '👶 गर्भवती महिलाओं को 5000 रुपये कैसे मिलेंगे', text: 'गर्भवती महिलाओं को 5000 रुपये कैसे मिलेंगे', scheme: 'pmmvy' },
-                { label: '🌾 मुफ्त राशन कार्ड के बारे में बताएं', text: 'मुफ्त राशन योजना की जानकारी दीजिए', scheme: null },
-                { label: '🛡️ मुझे महिला सुरक्षा हेल्पलाइन से बात करनी है', text: 'महिला हेल्पलाइन 181', scheme: 'safety' },
-                { label: '💳 जन धन बैंक खाता कैसे खोलें', text: 'जन धन खाता खोलना है', scheme: null },
-              ].map((item) => (
-                <button
-                  type="button"
-                  key={item.label}
-                  className="drawer-prompt-btn"
-                  onClick={() => {
-                    setShowVoiceDrawer(false);
-                    handleTranscriptReceived(item.text);
-                  }}
-                >
-                  <span>{item.label}</span>
-                  <ArrowRight size={16} />
-                </button>
-              ))}
-            </div>
-            <button className="continue-button full" onClick={() => setShowVoiceDrawer(false)} style={{ marginTop: '14px' }}>
-              {t.close || 'बंद करें'}
-            </button>
-          </div>
-        </div>
-      )}
+
 
       {/* Microphone Permission Diagnostic Modal */}
       {showVoiceHelpModal && (
@@ -2065,7 +2743,7 @@ function App() {
                     await requestMicrophoneAccess();
                     toggleVoice();
                   } catch {
-                    setShowVoiceDrawer(true);
+                    setVoiceErrorMsg(lang === 'hi' ? 'माइक अनुमति अभी भी बंद है।' : 'Microphone permission still denied.');
                   }
                 }}
               >
@@ -2074,12 +2752,9 @@ function App() {
               <button
                 type="button"
                 className="listen-button full"
-                onClick={() => {
-                  setShowVoiceHelpModal(false);
-                  setShowVoiceDrawer(true);
-                }}
+                onClick={() => setShowVoiceHelpModal(false)}
               >
-                {lang === 'hi' ? 'बिना माइक के सुझाव देखें' : 'Use Spoken Prompts Instead'}
+                {t.close || 'बंद करें'}
               </button>
             </div>
           </div>

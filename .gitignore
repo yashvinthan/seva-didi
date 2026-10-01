@@ -9,4 +9,4 @@ dist/
 .agent/
 .agents/
 .impeccable/
-
+*.ps1

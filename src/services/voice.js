@@ -63,7 +63,13 @@ export function createSpeechRecognizer({ lang = 'hi', onResult, onError, onEnd, 
 
   const recognition = new Recognition();
   const meta = getLanguageMeta(lang);
-  recognition.lang = meta.speechLocale || 'hi-IN';
+  // Ensure locale exists and fallback if known unsupported on some platforms
+  let locale = meta.speechLocale || 'hi-IN';
+  if (lang === 'as') locale = 'bn-IN'; // Chrome speech engine supports Bengali for eastern Indic
+  if (lang === 'hi-Latn') locale = 'hi-IN';
+  if (lang === 'ta-Latn') locale = 'ta-IN';
+
+  recognition.lang = locale;
   recognition.interimResults = false;
   recognition.maxAlternatives = 3;
 
@@ -72,7 +78,15 @@ export function createSpeechRecognizer({ lang = 'hi', onResult, onError, onEnd, 
   };
 
   recognition.onresult = (event) => {
-    const transcript = event.results?.[0]?.[0]?.transcript || '';
+    let transcript = '';
+    if (event.results && event.results.length > 0) {
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript + ' ';
+      }
+    }
+    if (!transcript.trim() && event.results?.[0]?.[0]?.transcript) {
+      transcript = event.results[0][0].transcript;
+    }
     if (onResult) onResult(transcript.trim());
   };
 
@@ -153,12 +167,23 @@ export class VoiceRecorder {
   }
 }
 
+export function stopSpeaking() {
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch {}
+  }
+}
+
 /**
  * Resilient Speech Synthesis for Indian regional languages.
  * Fixes Chrome freeze bug, selects Indian accent voice where available.
  */
 export function speakText(text, lang = 'hi', { onStart, onEnd } = {}) {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  if (typeof window === 'undefined' || !window.speechSynthesis) {
+    if (onEnd) onEnd();
+    return;
+  }
 
   try {
     // 1. Unfreeze Chrome synthesis engine if it was paused
@@ -167,31 +192,46 @@ export function speakText(text, lang = 'hi', { onStart, onEnd } = {}) {
     }
     window.speechSynthesis.cancel();
 
-    if (!text || !text.trim()) return;
+    if (!text || !text.trim()) {
+      if (onEnd) onEnd();
+      return;
+    }
 
     const meta = getLanguageMeta(lang);
     const targetLocale = meta.speechLocale || 'hi-IN';
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = targetLocale;
-    utterance.rate = 0.88; // Slightly measured rate for clear comprehension by rural users
+    utterance.rate = 0.88; // Slightly measured rate for clear comprehension by first-time users
     utterance.pitch = 1.0;
 
     // 2. Select best matching voice from cached voices
     if (cachedVoices.length === 0) refreshVoices();
-    const voice = cachedVoices.find((v) => v.lang === targetLocale || v.lang.replace('_', '-').startsWith(meta.speechLocale.split('-')[0]));
+    const langPrefix = targetLocale.split('-')[0].toLowerCase();
+    const voice = cachedVoices.find((v) => {
+      const vLang = (v.lang || '').replace('_', '-').toLowerCase();
+      return vLang === targetLocale.toLowerCase() || vLang.startsWith(langPrefix);
+    }) || cachedVoices.find((v) => {
+      const vLang = (v.lang || '').replace('_', '-').toLowerCase();
+      return vLang === 'hi-in' || vLang === 'en-in';
+    });
+
     if (voice) {
       utterance.voice = voice;
     }
 
     if (onStart) utterance.onstart = onStart;
-    if (onEnd) utterance.onend = onEnd;
-    utterance.onerror = () => {
+    utterance.onend = () => {
+      if (onEnd) onEnd();
+    };
+    utterance.onerror = (e) => {
+      console.warn('SpeechSynthesis error:', e);
       if (onEnd) onEnd();
     };
 
     window.speechSynthesis.speak(utterance);
-  } catch {
-    // Graceful fallback without crashing
+  } catch (err) {
+    console.warn('speakText error:', err);
     if (onEnd) onEnd();
   }
 }
+
