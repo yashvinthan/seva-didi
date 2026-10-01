@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: seva-didi
+    env: node
+    plan: free
+    region: singapore
+    buildCommand: pnpm run build
+    startCommand: node server/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8787
+      - key: GEMINI_API_KEY
+        sync: false
