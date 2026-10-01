@@ -92,8 +92,8 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 .onboarding-language-tile:hover { border-color: var(--accent); }
 .onboarding-language-tile.selected { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; }
 .onboarding-language-tile span { font-family: var(--display-font); font-size: 26px; line-height: 1; }
-.onboarding-language-tile .tile-listen-btn { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: var(--muted); background: var(--paper); }
-.onboarding-language-tile.selected .tile-listen-btn { color: var(--accent); }
+.onboarding-language-tile .tile-listen-btn { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--muted); background: var(--paper); border: 1px solid var(--rule); }
+.onboarding-language-tile.selected .tile-listen-btn { color: var(--accent); border-color: var(--accent); }
 
 /* Step 1 Voice Showcase */
 .onboarding-mic-hero { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 0 16px; text-align: center; }
@@ -101,7 +101,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 .onboarding-mic-pulse-ring::before { position: absolute; inset: -8px; content: ''; border-radius: 50%; border: 2px dashed var(--accent); opacity: .4; animation: rotateSlow 12s linear infinite; }
 .onboarding-mic-button { display: grid; place-items: center; width: 84px; height: 84px; color: var(--paper); background: var(--accent); border-radius: 50%; animation: breathe 2s ease-in-out infinite; box-shadow: 0 4px 14px rgba(192, 57, 43, .25); }
 .onboarding-mic-button:hover { transform: translateY(2px); }
-.onboarding-voice-tip { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; background: var(--warm); border-radius: 4px; border-left: 3px solid var(--accent); margin-top: 14px; }
+.onboarding-voice-tip { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; background: var(--accent-soft); border-radius: 4px; border: 1px solid var(--rule); margin-top: 14px; }
 .onboarding-voice-tip p { margin: 0; color: var(--ink); font-size: 14px; line-height: 1.5; }
 
 .onboarding-practice-chips { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
@@ -111,7 +111,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 
 /* Step 2 Offline Reassurance */
 .onboarding-reassurance-list { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
-.onboarding-reassurance-item { display: flex; align-items: flex-start; gap: 14px; padding: 14px; background: var(--warm); border-radius: 4px; border-left: 3px solid var(--accent); }
+.onboarding-reassurance-item { display: flex; align-items: flex-start; gap: 14px; padding: 14px; background: var(--warm); border-radius: 4px; border: 1px solid var(--rule); }
 .onboarding-reassurance-icon { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; border-radius: 4px; background: var(--paper); color: var(--accent); }
 .onboarding-reassurance-text strong { display: block; font-size: 16px; color: var(--ink); margin-bottom: 3px; }
 .onboarding-reassurance-text small { color: var(--muted); font-size: 13px; line-height: 1.45; display: block; }
@@ -262,9 +262,9 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 .safety-modal p { margin: 9px 0 23px; color: var(--muted); font-size: 16px; line-height: 1.6; }
 .full { width: 100%; }
 
-.safety-modal.internet-modal { border-top: 3px solid var(--accent); }
+.safety-modal.internet-modal { border-top: 2px solid var(--accent); }
 .internet-modal-badge { display: grid; place-items: center; width: 54px; height: 54px; margin-bottom: 8px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
-.internet-modal-tips { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 20px; padding: 12px 14px; background: var(--warm); border-radius: 4px; border-left: 3px solid var(--accent); text-align: left; }
+.internet-modal-tips { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 20px; padding: 12px 14px; background: var(--warm); border-radius: 4px; border: 1px solid var(--rule); text-align: left; }
 .internet-modal-tip { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); font-weight: 600; }
 .internet-modal-actions { display: flex; flex-direction: column; gap: 10px; }
 .internet-modal-call-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 16px; border-radius: 4px; border: 1px solid var(--ink); color: var(--ink); background: transparent; font-size: 15px; font-weight: 700; text-decoration: none; }
@@ -353,8 +353,17 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-  .onboarding-mic { animation: none; border-width: 4px; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+  button, a, input, select, textarea, .onboarding-language-tile, .drawer-prompt-btn {
+    transition-duration: 120ms !important;
+  }
+  .onboarding-mic, .onboarding-mic-button, .onboarding-mic-pulse-ring::before, .mic-pulse-ring {
+    animation: none !important;
+  }
 }
 
 /* Fluid canvas: keep the phone intimate, then let the same system breathe on larger screens. */
@@ -499,11 +508,11 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #FDEDEC;
-  border: 1px solid #F5B7B1;
-  color: #C0392B;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  color: var(--accent);
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 4px;
   margin: 10px 0 6px;
   font-size: 0.84rem;
   text-align: left;
@@ -514,11 +523,11 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 }
 
 .voice-error-action {
-  background: #C0392B;
-  color: #FFFFFF;
+  background: var(--accent);
+  color: var(--paper);
   border: none;
-  border-radius: 6px;
-  padding: 4px 10px;
+  border-radius: 4px;
+  padding: 6px 12px;
   font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
@@ -544,10 +553,10 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  background: #FAF8F5;
-  border: 1.5px solid #E4DDD3;
-  border-radius: 10px;
-  color: #2C2C2C;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  color: var(--ink);
   font-size: 0.92rem;
   font-weight: 600;
   text-align: left;
@@ -556,9 +565,8 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 }
 
 .drawer-prompt-btn:hover {
-  background: #F0EDE8;
+  background: var(--warm);
   border-color: var(--accent);
   color: var(--accent);
-  transform: translateX(3px);
 }
 
