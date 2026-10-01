@@ -40,6 +40,7 @@ import {
   X,
 } from 'lucide-react';
 import { getGeminiGuidance } from './services/gemini';
+import { getHealth, openSession, saveProgress, searchSchemeCatalog, transcribeVoiceWithApi } from './services/api';
 import { getOfflineGuidance } from './services/offlineGuidance';
 import { checkVoiceCapabilities, requestMicrophoneAccess, createSpeechRecognizer, VoiceRecorder, speakText, stopSpeaking } from './services/voice';
 import { detectLanguage } from '../shared/detectLanguage.js';
