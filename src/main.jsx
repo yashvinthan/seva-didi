@@ -1406,11 +1406,13 @@ function App() {
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
-  }, [screen, onboardingStep]);
+  }, [screen]);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return undefined;
-    navigator.serviceWorker.register('/sw.js').catch(() => undefined);
+    try {
+      navigator.serviceWorker.register('./sw.js').catch(() => undefined);
+    } catch {}
     return undefined;
   }, []);
 
@@ -1748,16 +1750,7 @@ function App() {
     speakSafe(greeting, nextLang);
   }
 
-  function finishOnboarding() {
-    window.localStorage.setItem('saheli-onboarding-complete', 'true');
-    setShowOnboarding(false);
-    setOnboardingStep(0);
-  }
 
-  function startOnboardingVoice() {
-    finishOnboarding();
-    window.setTimeout(() => toggleVoice(), 150);
-  }
 
   function handleOfficialClick(event) {
     if (isOnline) return;
@@ -2528,4 +2521,43 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+class RootErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('App error caught by RootErrorBoundary:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', background: '#faf8f5', fontFamily: 'system-ui, sans-serif', textAlign: 'center', color: '#2c2c2c' }}>
+          <h1 style={{ fontSize: '28px', color: '#c0392b', marginBottom: '12px' }}>सेवा दीदी (Seva Didi)</h1>
+          <p style={{ fontSize: '18px', marginBottom: '8px' }}>नमस्ते, ऐप लोड करने में समस्या आई।</p>
+          <p style={{ fontSize: '14px', color: '#666', marginBottom: '24px' }}>कृपया नीचे दिए गए बटन को दबाकर दोबारा शुरू करें।</p>
+          <button
+            type="button"
+            onClick={() => { window.location.reload(); }}
+            style={{ background: '#c0392b', color: '#fff', border: 'none', padding: '14px 28px', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}
+          >
+            दोबारा शुरू करें (Reload)
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  createRoot(rootElement).render(
+    <RootErrorBoundary>
+      <App />
+    </RootErrorBoundary>
+  );
+}
