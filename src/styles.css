@@ -237,6 +237,27 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   background: #eafaf1;
 }
 
+.ai-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 4px;
+  border: 1px solid var(--rule);
+  background: var(--warm);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ai-mode-pill.live {
+  border-color: #27ae60;
+  color: #1e8449;
+  background: #eafaf1;
+}
+
 .help-button, .language-button, .services-button {
   display: inline-flex;
   align-items: center;
@@ -543,7 +564,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 }
 
 .mic-status-primary {
-  margin-top: 14px;
+  margin-top: 24px;
   color: var(--ink);
   font-size: 16px;
   font-weight: 700;
@@ -566,7 +587,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   gap: 8px;
   width: 100%;
   margin-top: 14px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   background: var(--warm);
   border: 1px solid var(--rule);
   border-radius: 8px;
@@ -597,11 +618,21 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 
 .voice-lang-chips {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
   gap: 6px;
+  padding: 2px 2px 6px;
+}
+
+.voice-lang-chips::-webkit-scrollbar {
+  display: none;
 }
 
 .voice-lang-chip {
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 4px 10px;
   background: var(--paper);
   border: 1px solid var(--rule);
@@ -2214,6 +2245,102 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   }
 }
 
+@media (max-width: 640px) {
+  .app-header {
+    min-height: 56px;
+    padding: 0 12px;
+  }
+
+  /* Hide 3-line wordmark subtitle on mobile so logo doesn't squash header */
+  .wordmark-copy small {
+    display: none;
+  }
+
+  .wordmark-copy strong {
+    font-size: 20px;
+  }
+
+  .wordmark-mark {
+    width: 24px;
+    height: 16px;
+    flex: 0 0 24px;
+  }
+
+  .header-tools {
+    gap: 5px;
+  }
+
+  /* Compact round icon badge for connection status */
+  .connection-pill span {
+    display: none;
+  }
+
+  .connection-pill {
+    min-height: 34px;
+    min-width: 34px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+
+  /* Hide technical AI mode pill on small mobile header to avoid crowding */
+  .ai-mode-pill {
+    display: none;
+  }
+
+  /* Icon-only action buttons on mobile */
+  .services-button span,
+  .help-button span {
+    display: none;
+  }
+
+  .services-button,
+  .help-button {
+    min-height: 36px;
+    min-width: 36px;
+    padding: 0;
+    border-radius: 6px;
+  }
+
+  .services-button:hover,
+  .help-button:hover {
+    background: var(--warm);
+  }
+
+  .language-button {
+    min-height: 36px;
+    padding: 0 8px;
+    font-size: 12px;
+    gap: 4px;
+    background: var(--warm);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+  }
+
+  .page-shell {
+    padding: 16px 12px 48px;
+  }
+
+  .home-headline {
+    font-size: 40px;
+    line-height: 1.1;
+  }
+
+  .home-question {
+    font-size: 18px;
+    margin-top: 4px;
+  }
+
+  .hand-drawn-mic-box {
+    padding: 16px 0 12px;
+  }
+
+  .hand-drawn-mic-button {
+    width: 88px;
+    height: 88px;
+  }
+}
+
 @media (max-width: 540px) {
   .home-headline-row, .step-question-header {
     flex-direction: column;
@@ -2228,20 +2355,37 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 
 @media (max-width: 420px) {
   .page-shell {
-    padding-left: 14px;
-    padding-right: 14px;
+    padding-left: 12px;
+    padding-right: 12px;
   }
   .home-headline {
-    font-size: 44px;
+    font-size: 36px;
   }
   .lang-script-tile span {
     font-size: 32px;
   }
   .hero-benefit-amount {
-    font-size: 60px;
+    font-size: 52px;
   }
   .quick-voice-chips-row {
     grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .quick-voice-chip {
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 360px) {
+  .language-button span {
+    max-width: 48px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .home-headline {
+    font-size: 32px;
   }
 }
 
