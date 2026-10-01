@@ -56,46 +56,111 @@ export async function requestMicrophoneAccess() {
 /**
  * Create a resilient SpeechRecognition session.
  */
-export function createSpeechRecognizer({ lang = 'hi', onResult, onError, onEnd, onStart }) {
+export function createSpeechRecognizer({
+  lang = 'hi',
+  onResult,
+  onInterimResult,
+  onError,
+  onEnd,
+  onStart,
+  onSpeechStart,
+  onSpeechEnd,
+  autoStopAfterSilenceMs = 2600,
+}) {
   if (typeof window === 'undefined') return null;
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Recognition) return null;
 
   const recognition = new Recognition();
   const meta = getLanguageMeta(lang);
-  // Ensure locale exists and fallback if known unsupported on some platforms
   let locale = meta.speechLocale || 'hi-IN';
-  if (lang === 'as') locale = 'bn-IN'; // Chrome speech engine supports Bengali for eastern Indic
+  if (lang === 'as') locale = 'bn-IN';
   if (lang === 'hi-Latn') locale = 'hi-IN';
   if (lang === 'ta-Latn') locale = 'ta-IN';
 
   recognition.lang = locale;
-  recognition.interimResults = false;
+  recognition.interimResults = true;
+  recognition.continuous = true;
   recognition.maxAlternatives = 3;
 
+  let accumulatedFinal = '';
+  let silenceTimer = null;
+
+  function resetSilenceTimer() {
+    if (silenceTimer) clearTimeout(silenceTimer);
+    if (autoStopAfterSilenceMs > 0) {
+      silenceTimer = setTimeout(() => {
+        if (accumulatedFinal.trim()) {
+          try {
+            recognition.stop();
+          } catch {}
+        }
+      }, autoStopAfterSilenceMs);
+    }
+  }
+
+  function clearSilenceTimer() {
+    if (silenceTimer) {
+      clearTimeout(silenceTimer);
+      silenceTimer = null;
+    }
+  }
+
   recognition.onstart = () => {
+    accumulatedFinal = '';
+    clearSilenceTimer();
     if (onStart) onStart();
   };
 
+  recognition.onspeechstart = () => {
+    resetSilenceTimer();
+    if (onSpeechStart) onSpeechStart();
+  };
+
+  recognition.onspeechend = () => {
+    resetSilenceTimer();
+    if (onSpeechEnd) onSpeechEnd();
+  };
+
   recognition.onresult = (event) => {
-    let transcript = '';
-    if (event.results && event.results.length > 0) {
-      for (let i = 0; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript + ' ';
+    let currentInterim = '';
+    let newlyFinal = '';
+
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      const item = event.results[i];
+      const text = item[0]?.transcript || '';
+      if (item.isFinal) {
+        newlyFinal += text + ' ';
+      } else {
+        currentInterim += text;
       }
     }
-    if (!transcript.trim() && event.results?.[0]?.[0]?.transcript) {
-      transcript = event.results[0][0].transcript;
+
+    if (newlyFinal) {
+      accumulatedFinal = (accumulatedFinal ? accumulatedFinal + ' ' : '') + newlyFinal.trim();
     }
-    if (onResult) onResult(transcript.trim());
+
+    const liveDisplay = (accumulatedFinal ? accumulatedFinal + ' ' : '') + currentInterim;
+
+    if (liveDisplay.trim() && onInterimResult) {
+      onInterimResult(liveDisplay.trim(), Boolean(newlyFinal));
+    }
+
+    if (newlyFinal && onResult) {
+      onResult(accumulatedFinal.trim());
+    }
+
+    resetSilenceTimer();
   };
 
   recognition.onerror = (event) => {
+    clearSilenceTimer();
     if (onError) onError(event.error || 'speech-error');
   };
 
   recognition.onend = () => {
-    if (onEnd) onEnd();
+    clearSilenceTimer();
+    if (onEnd) onEnd(accumulatedFinal.trim());
   };
 
   return recognition;

@@ -38,6 +38,38 @@ const TANGLISH_MARKERS = [
   'vaanga', 'ponga', 'theriyum', 'illana', 'ungalukku', 'kelunga'
 ];
 
+const TELUGU_LATIN_MARKERS = [
+  'naku', 'kavali', 'cheppandi', 'ela', 'avasaram', 'enti', 'andi', 'meeru', 'evaru'
+];
+
+const BENGALI_LATIN_MARKERS = [
+  'amar', 'lagbe', 'kivabe', 'bolun', 'darokar', 'sahajjo', 'apni', 'amake'
+];
+
+const MARATHI_LATIN_MARKERS = [
+  'mala', 'pahije', 'kasa', 'sang', 'mahit', 'dya', 'aahe'
+];
+
+const KANNADA_LATIN_MARKERS = [
+  'nanage', 'beku', 'hege', 'heli', 'yojane', 'nimma', 'nanna'
+];
+
+const GUJARATI_LATIN_MARKERS = [
+  'mane', 'joiye', 'kem', 'chhe', 'maru', 'tamare'
+];
+
+const PUNJABI_LATIN_MARKERS = [
+  'mainu', 'chahida', 'kiven', 'dasso', 'mera', 'tussi'
+];
+
+const MALAYALAM_LATIN_MARKERS = [
+  'enikku', 'venam', 'engane', 'sahayam', 'ariyaan', 'ente'
+];
+
+const ODIA_LATIN_MARKERS = [
+  'mote', 'darkar', 'kemiti', 'kuha', 'mora'
+];
+
 const ENGLISH_MARKERS = [
   'how', 'what', 'apply', 'help', 'please', 'where', 'can', 'for', 'cooking',
   'scheme', 'service', 'documents', 'eligible', 'benefit', 'women', 'need', 'want',
@@ -104,7 +136,7 @@ export function detectLanguage(text) {
     };
   }
 
-  // 2. Latin script analysis (English vs Hinglish vs Tanglish)
+  // 2. Latin script analysis (English vs Hinglish vs Tanglish vs regional transliterations)
   const words = trimmed.toLowerCase().split(/[\s,?.!;:()"-]+/).filter(Boolean);
   if (words.length === 0) {
     return { code: 'en', confidence: 0.5, method: 'fallback-english' };
@@ -112,22 +144,49 @@ export function detectLanguage(text) {
 
   let hinglishCount = 0;
   let tanglishCount = 0;
+  let teluguCount = 0;
+  let bengaliCount = 0;
+  let marathiCount = 0;
+  let kannadaCount = 0;
+  let gujaratiCount = 0;
+  let punjabiCount = 0;
+  let malayalamCount = 0;
+  let odiaCount = 0;
   let englishCount = 0;
 
   for (const word of words) {
     if (HINGLISH_MARKERS.includes(word)) hinglishCount += 1;
     if (TANGLISH_MARKERS.includes(word)) tanglishCount += 1;
+    if (TELUGU_LATIN_MARKERS.includes(word)) teluguCount += 1;
+    if (BENGALI_LATIN_MARKERS.includes(word)) bengaliCount += 1;
+    if (MARATHI_LATIN_MARKERS.includes(word)) marathiCount += 1;
+    if (KANNADA_LATIN_MARKERS.includes(word)) kannadaCount += 1;
+    if (GUJARATI_LATIN_MARKERS.includes(word)) gujaratiCount += 1;
+    if (PUNJABI_LATIN_MARKERS.includes(word)) punjabiCount += 1;
+    if (MALAYALAM_LATIN_MARKERS.includes(word)) malayalamCount += 1;
+    if (ODIA_LATIN_MARKERS.includes(word)) odiaCount += 1;
     if (ENGLISH_MARKERS.includes(word)) englishCount += 1;
   }
 
-  if (tanglishCount > 0 && tanglishCount >= hinglishCount) {
-    const confidence = Math.min(1, Math.round((tanglishCount / words.length) * 100) / 100 + 0.3);
-    return { code: 'ta-Latn', confidence, method: 'tanglish-lexicon' };
-  }
+  const scores = [
+    { code: 'ta-Latn', count: tanglishCount, method: 'tanglish-lexicon' },
+    { code: 'hi-Latn', count: hinglishCount, method: 'hinglish-lexicon' },
+    { code: 'te', count: teluguCount, method: 'telugu-latin-lexicon' },
+    { code: 'bn', count: bengaliCount, method: 'bengali-latin-lexicon' },
+    { code: 'mr', count: marathiCount, method: 'marathi-latin-lexicon' },
+    { code: 'kn', count: kannadaCount, method: 'kannada-latin-lexicon' },
+    { code: 'gu', count: gujaratiCount, method: 'gujarati-latin-lexicon' },
+    { code: 'pa', count: punjabiCount, method: 'punjabi-latin-lexicon' },
+    { code: 'ml', count: malayalamCount, method: 'malayalam-latin-lexicon' },
+    { code: 'or', count: odiaCount, method: 'odia-latin-lexicon' },
+  ];
 
-  if (hinglishCount > 0 && hinglishCount > englishCount) {
-    const confidence = Math.min(1, Math.round((hinglishCount / words.length) * 100) / 100 + 0.3);
-    return { code: 'hi-Latn', confidence, method: 'hinglish-lexicon' };
+  scores.sort((a, b) => b.count - a.count);
+  const bestRegional = scores[0];
+
+  if (bestRegional.count > 0 && bestRegional.count >= englishCount) {
+    const confidence = Math.min(1, Math.round((bestRegional.count / words.length) * 100) / 100 + 0.35);
+    return { code: bestRegional.code, confidence, method: bestRegional.method };
   }
 
   return { code: 'en', confidence: 0.8, method: 'latin-english-default' };

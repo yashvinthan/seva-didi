@@ -1229,6 +1229,9 @@ function App() {
   // Advanced Voice Controller state
   const [voiceStatus, setVoiceStatus] = useState('idle'); // 'idle' | 'listening' | 'recording' | 'processing' | 'permission_denied' | 'error'
   const [voiceErrorMsg, setVoiceErrorMsg] = useState('');
+  const [interimText, setInterimText] = useState('');
+  const [isMicSpeaking, setIsMicSpeaking] = useState(false);
+  const [voiceDetectedLang, setVoiceDetectedLang] = useState('');
 
   const recognitionRef = useRef(null);
   const voiceRecorderRef = useRef(null);
@@ -1398,10 +1401,16 @@ function App() {
   function checkAndAutoDetectLanguage(rawText) {
     if (!rawText || rawText.trim().length < 3) return;
     const detected = detectLanguage(rawText);
-    if (detected.confidence >= 0.7 && detected.code !== lang) {
+    if (detected.confidence >= 0.5 && detected.code !== lang) {
       const newMeta = getLanguageMeta(detected.code);
       setLang(detected.code);
+      setVoiceDetectedLang(newMeta.label);
       showLanguageToast(detected.code, newMeta.label);
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.lang = newMeta.speechLocale || 'hi-IN';
+        } catch {}
+      }
     }
   }
 
@@ -1486,8 +1495,14 @@ function App() {
 
     // If currently listening/recording, stop immediately
     if (voiceStatus === 'listening') {
+      const pending = interimText;
       try { recognitionRef.current?.stop(); } catch {}
       setVoiceStatus('idle');
+      setInterimText('');
+      setIsMicSpeaking(false);
+      if (pending && !message) {
+        handleTranscriptReceived(pending);
+      }
       return;
     }
     if (voiceStatus === 'recording') {
@@ -1526,12 +1541,30 @@ function App() {
           lang,
           onStart: () => {
             setVoiceStatus('listening');
+            setInterimText('');
+            setIsMicSpeaking(false);
+          },
+          onSpeechStart: () => {
+            setIsMicSpeaking(true);
+          },
+          onSpeechEnd: () => {
+            setIsMicSpeaking(false);
+          },
+          onInterimResult: (liveText) => {
+            setInterimText(liveText);
+            setInputText(liveText);
+            setIsMicSpeaking(true);
+            checkAndAutoDetectLanguage(liveText);
           },
           onResult: (transcript) => {
             setVoiceStatus('idle');
+            setInterimText('');
+            setIsMicSpeaking(false);
             handleTranscriptReceived(transcript);
           },
           onError: async (errorType) => {
+            setInterimText('');
+            setIsMicSpeaking(false);
             if (errorType === 'not-allowed') {
               setVoiceStatus('permission_denied');
               setVoiceErrorMsg('ब्राउज़र में माइक अनुमति (Mic Permission) बंद है। कृपया अनुमति दें।');
@@ -1551,8 +1584,13 @@ function App() {
               setVoiceErrorMsg(lang === 'hi' ? 'माइक से आवाज़ नहीं मिली। कृपया दोबारा बोलें।' : 'Could not detect voice. Please tap mic and speak again.');
             }
           },
-          onEnd: () => {
+          onEnd: (accumulated) => {
             setVoiceStatus((prev) => (prev === 'listening' ? 'idle' : prev));
+            setInterimText('');
+            setIsMicSpeaking(false);
+            if (accumulated && !message) {
+              handleTranscriptReceived(accumulated);
+            }
           },
         });
 
@@ -1925,6 +1963,49 @@ function App() {
                     </button>
                   </div>
 
+                  {/* Voice Language Switcher Bar with Auto-Detection Indicator */}
+                  <div className="voice-lang-bar">
+                    <div className="voice-lang-bar-header">
+                      <span>{lang === 'hi' ? 'बोलने की भाषा (Voice Language):' : 'Voice Language:'}</span>
+                      <span className="voice-lang-auto-tag">
+                        <Sparkles size={11} />
+                        {lang === 'hi' ? 'स्वतः पहचान सक्रिय' : 'Auto-Detect Active'}
+                      </span>
+                    </div>
+                    <div className="voice-lang-chips">
+                      {REGIONAL_LANGUAGE_CODES.map((code) => (
+                        <button
+                          key={code}
+                          type="button"
+                          className={`voice-lang-chip ${lang === code ? 'active' : ''}`}
+                          onClick={() => {
+                            setLang(code);
+                            if (recognitionRef.current) {
+                              try { recognitionRef.current.lang = LANGUAGE_META[code].speechLocale || 'hi-IN'; } catch {}
+                            }
+                          }}
+                        >
+                          {LANGUAGE_META[code].label}
+                        </button>
+                      ))}
+                      {CODE_MIXED_LANGUAGE_CODES.map((code) => (
+                        <button
+                          key={code}
+                          type="button"
+                          className={`voice-lang-chip ${lang === code ? 'active' : ''}`}
+                          onClick={() => {
+                            setLang(code);
+                            if (recognitionRef.current) {
+                              try { recognitionRef.current.lang = LANGUAGE_META[code].speechLocale || 'hi-IN'; } catch {}
+                            }
+                          }}
+                        >
+                          {LANGUAGE_META[code].label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Screen 1: The 96px Hand-Drawn Rangoli Dot Mic Hero */}
                   <div className="hand-drawn-mic-box">
                     <button
@@ -1952,8 +2033,85 @@ function App() {
                     <div className="mic-status-secondary">
                       {voiceStatus === 'idle'
                         ? (lang === 'hi' ? 'दबाएं और अपनी भाषा में बोलें' : 'Speak naturally in your mother tongue')
-                        : (lang === 'hi' ? 'बोलने के बाद दोबारा दबाएं' : 'Tap again when finished speaking')}
+                        : (lang === 'hi' ? 'बोलने के बाद दोबारा दबाएं या 2 सेकंड रुकें' : 'Tap again when finished or pause 2 seconds')}
                     </div>
+
+                    {/* Real-Time Live Streaming Voice-to-Text Card */}
+                    {(voiceStatus === 'listening' || voiceStatus === 'recording') && (
+                      <div className="realtime-voice-card" role="status" aria-live="polite">
+                        <div className="realtime-live-header">
+                          <div className="realtime-rec-badge">
+                            <span className="live-beacon" />
+                            <span>{lang === 'hi' ? 'लाइव आवाज़ पहचान' : 'Live Voice Detection'}</span>
+                          </div>
+                          <span className="realtime-lang-badge">
+                            <Globe2 size={13} />
+                            <span>{LANGUAGE_META[lang]?.label || 'हिंदी'}</span>
+                          </span>
+                        </div>
+
+                        <div className={`realtime-soundwave ${isMicSpeaking ? 'speaking' : ''}`} aria-hidden="true">
+                          <span className="sound-bar" />
+                          <span className="sound-bar" />
+                          <span className="sound-bar" />
+                          <span className="sound-bar" />
+                          <span className="sound-bar" />
+                          <span className="sound-bar" />
+                          <span className="sound-bar" />
+                        </div>
+
+                        <div className="realtime-speech-stream">
+                          {interimText ? (
+                            <span>
+                              <strong>{interimText}</strong>
+                              <span className="speech-live-cursor">|</span>
+                            </span>
+                          ) : (
+                            <span className="realtime-speech-placeholder">
+                              {lang === 'hi'
+                                ? 'बोलिए, आपकी आवाज़ यहाँ तुरंत शब्द-दर-शब्द लिखी जाएगी…'
+                                : 'Speak now, your words will stream here live in real-time…'}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="realtime-actions-row">
+                          <button
+                            type="button"
+                            className="btn-done-speaking"
+                            onClick={() => {
+                              const spoken = interimText || inputText;
+                              try { recognitionRef.current?.stop(); } catch {}
+                              try { voiceRecorderRef.current?.stop(); } catch {}
+                              setVoiceStatus('idle');
+                              setInterimText('');
+                              setIsMicSpeaking(false);
+                              if (spoken) {
+                                handleTranscriptReceived(spoken);
+                              }
+                            }}
+                          >
+                            <Check size={16} />
+                            <span>{lang === 'hi' ? 'बोलना पूरा हुआ (सबमिट)' : 'Done Speaking (Submit)'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            className="btn-cancel-speaking"
+                            onClick={() => {
+                              try { recognitionRef.current?.abort(); } catch {}
+                              try { voiceRecorderRef.current?.cancel(); } catch {}
+                              setVoiceStatus('idle');
+                              setInterimText('');
+                              setIsMicSpeaking(false);
+                            }}
+                          >
+                            <X size={14} />
+                            <span>{lang === 'hi' ? 'रद्द' : 'Cancel'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Quick 1-touch spoken option chips for women */}
                     <div className="quick-voice-chips-container">
