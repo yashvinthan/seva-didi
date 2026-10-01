@@ -1032,294 +1032,7 @@ function speak(text, lang) {
   speakText(text, lang);
 }
 
-function OnboardingView({ lang, setLang, step, setStep, onComplete, onStartVoice, onSelectScheme, t }) {
-  const languageButton = (code) => {
-    const isSelected = lang === code;
-    return (
-      <button
-        key={code}
-        type="button"
-        className={`lang-script-tile ${isSelected ? 'selected' : ''}`}
-        onClick={() => {
-          setLang(code);
-          speak(LANGUAGE_GREETINGS[code] || 'नमस्ते', code);
-        }}
-        aria-pressed={isSelected}
-        aria-label={`${LANGUAGE_META[code].label} (${LANGUAGE_META[code].promptName})`}
-      >
-        <span>{LANGUAGE_META[code].label}</span>
-      </button>
-    );
-  };
 
-  return (
-    <main className="page-shell onboarding-shell">
-      <div className="page-rule" />
-      <section className="onboarding-view page-enter">
-        <div className="onboarding-progress-bar" aria-label={`Step ${step + 1} of 4`}>
-          <div className="onboarding-progress-steps">
-            <i className={step >= 0 ? 'active' : ''} />
-            <i className={step >= 1 ? 'active' : ''} />
-            <i className={step >= 2 ? 'active' : ''} />
-            <i className={step >= 3 ? 'active' : ''} />
-          </div>
-          <span className="onboarding-step-counter">{step + 1} / 4</span>
-        </div>
-
-        {/* Step 0: Language Selection with 48px Huge Native Script Tiles */}
-        {step === 0 && (
-          <div className="onboarding-card">
-            <h1 className="lang-screen-heading">{t.chooseLanguage || 'आपकी भाषा?'}</h1>
-            <p className="lang-screen-sub">{t.onboardingStep1Sub || 'अपनी भाषा चुनिए'}</p>
-            <div className="lang-script-grid">
-              {REGIONAL_LANGUAGE_CODES.map(languageButton)}
-            </div>
-            {CODE_MIXED_LANGUAGE_CODES.length > 0 && (
-              <>
-                <p style={{ margin: '24px 0 8px', color: 'var(--muted)', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t.codeMixedGroup}</p>
-                <div className="lang-script-grid">
-                  {CODE_MIXED_LANGUAGE_CODES.map(languageButton)}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Step 1: Voice Guidance Showcase */}
-        {step === 1 && (
-          <div className="onboarding-card">
-            <div className="onboarding-card-header">
-              <h1>{t.onboardingStep2Title}</h1>
-              <p>{t.onboardingStep2Sub}</p>
-              <button
-                type="button"
-                className="onboarding-listen-bar"
-                onClick={() => speak(`${t.onboardingStep2Title}. ${t.onboardingStep2Sub}. ${t.onboardingVoiceTip}`, lang)}
-              >
-                <Volume2 size={18} />
-                <span>{t.onboardingListenGuide}</span>
-              </button>
-            </div>
-
-            <div className="onboarding-mic-hero">
-              <div className="onboarding-mic-pulse-ring">
-                <button
-                  type="button"
-                  className="onboarding-mic-button"
-                  onClick={onStartVoice}
-                  aria-label={t.speakAsk}
-                >
-                  <Mic size={38} strokeWidth={2} />
-                </button>
-              </div>
-              <div className="onboarding-voice-tip">
-                <Info size={18} />
-                <p>{t.onboardingVoiceTip}</p>
-              </div>
-            </div>
-
-            <div className="onboarding-practice-chips">
-              <span className="onboarding-practice-chips-label">{t.onboardingTryVoice}</span>
-              <button
-                type="button"
-                className="onboarding-chip-row"
-                onClick={() => speak(t.quickPromptGas, lang)}
-              >
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><Flame size={15} aria-hidden="true" /> {t.quickPromptGas}</span>
-                <Volume2 size={16} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="onboarding-chip-row"
-                onClick={() => speak(t.quickPromptSkill, lang)}
-              >
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><Sparkles size={15} aria-hidden="true" /> {t.quickPromptSkill}</span>
-                <Volume2 size={16} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="onboarding-chip-row"
-                onClick={() => speak(t.quickPromptMaternity, lang)}
-              >
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><HeartHandshake size={15} aria-hidden="true" /> {t.quickPromptMaternity}</span>
-                <Volume2 size={16} aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: 100% Offline & Privacy Reassurance */}
-        {step === 2 && (
-          <div className="onboarding-card">
-            <div className="onboarding-card-header">
-              <h1>{t.onboardingStep3Title}</h1>
-              <p>{t.onboardingStep3Sub}</p>
-              <button
-                type="button"
-                className="onboarding-listen-bar"
-                onClick={() => speak(`${t.onboardingStep3Title}. ${t.onboardingStep3Sub}. ${t.onboardingOfflinePoint1}. ${t.onboardingOfflinePoint2}. ${t.onboardingOfflinePoint3}`, lang)}
-              >
-                <Volume2 size={18} />
-                <span>{t.onboardingListenGuide}</span>
-              </button>
-            </div>
-
-            <div className="onboarding-reassurance-list">
-              <div className="onboarding-reassurance-item">
-                <div className="onboarding-reassurance-icon">
-                  <ShieldCheck size={20} />
-                </div>
-                <div className="onboarding-reassurance-text">
-                  <strong>{t.offlineBadge}</strong>
-                  <small>{t.onboardingOfflinePoint1}</small>
-                </div>
-              </div>
-
-              <div className="onboarding-reassurance-item">
-                <div className="onboarding-reassurance-icon">
-                  <LockKeyhole size={20} />
-                </div>
-                <div className="onboarding-reassurance-text">
-                  <strong>{t.safetyTitle}</strong>
-                  <small>{t.onboardingOfflinePoint2}</small>
-                </div>
-              </div>
-
-              <div className="onboarding-reassurance-item">
-                <div className="onboarding-reassurance-icon">
-                  <WifiOff size={20} />
-                </div>
-                <div className="onboarding-reassurance-text">
-                  <strong>{t.internetTitle}</strong>
-                  <small>{t.onboardingOfflinePoint3}</small>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Pick an Essential Scheme or Skill Resource */}
-        {step === 3 && (
-          <div className="onboarding-card">
-            <div className="onboarding-card-header">
-              <h1>{t.onboardingStep4Title}</h1>
-              <p>{t.onboardingStep4Sub}</p>
-              <button
-                type="button"
-                className="onboarding-listen-bar"
-                onClick={() => speak(`${t.onboardingStep4Title}. ${t.onboardingStep4Sub}`, lang)}
-              >
-                <Volume2 size={18} />
-                <span>{t.onboardingListenGuide}</span>
-              </button>
-            </div>
-
-            <div className="onboarding-starter-grid">
-              <button
-                type="button"
-                className="onboarding-starter-card"
-                onClick={() => onSelectScheme('pmuy-new-connection')}
-              >
-                <div className="onboarding-starter-icon">
-                  <Flame size={24} />
-                </div>
-                <div className="onboarding-starter-copy">
-                  <strong>{t.onboardingCardGas}</strong>
-                  <small>{t.onboardingCardGasSub}</small>
-                </div>
-                <ArrowRight size={18} />
-              </button>
-
-              <button
-                type="button"
-                className="onboarding-starter-card"
-                onClick={() => onSelectScheme('skill-india')}
-              >
-                <div className="onboarding-starter-icon">
-                  <GraduationCap size={24} />
-                </div>
-                <div className="onboarding-starter-copy">
-                  <strong>{t.onboardingCardSkill}</strong>
-                  <small>{t.onboardingCardSkillSub}</small>
-                </div>
-                <ArrowRight size={18} />
-              </button>
-
-              <button
-                type="button"
-                className="onboarding-starter-card"
-                onClick={() => onSelectScheme('pmmvy')}
-              >
-                <div className="onboarding-starter-icon">
-                  <HeartPulse size={24} />
-                </div>
-                <div className="onboarding-starter-copy">
-                  <strong>{t.onboardingCardMaternity}</strong>
-                  <small>{t.onboardingCardMaternitySub}</small>
-                </div>
-                <ArrowRight size={18} />
-              </button>
-
-              <button
-                type="button"
-                className="onboarding-starter-card"
-                onClick={() => onSelectScheme('safety')}
-              >
-                <div className="onboarding-starter-icon">
-                  <ShieldAlert size={24} />
-                </div>
-                <div className="onboarding-starter-copy">
-                  <strong>{t.onboardingCardSafety}</strong>
-                  <small>{t.onboardingCardSafetySub}</small>
-                </div>
-                <ArrowRight size={18} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Navigation actions */}
-        <div className="onboarding-actions">
-          {step > 0 ? (
-            <button
-              type="button"
-              className="listen-button"
-              onClick={() => setStep((prev) => Math.max(0, prev - 1))}
-            >
-              <ArrowLeft size={16} /> {t.back}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="listen-button"
-              onClick={onComplete}
-            >
-              {t.seeDemo}
-            </button>
-          )}
-
-          {step < 3 ? (
-            <button
-              type="button"
-              className="continue-button"
-              onClick={() => setStep((prev) => prev + 1)}
-            >
-              {t.continue} <ArrowRight size={16} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="continue-button"
-              onClick={onStartVoice}
-            >
-              <Mic size={18} /> {t.onboardingStartMic}
-            </button>
-          )}
-        </div>
-      </section>
-    </main>
-  );
-}
 
 const RESOURCE_ICONS = {
   safety: ShieldAlert,
@@ -1503,9 +1216,7 @@ function App() {
   const [isResponding, setIsResponding] = useState(false);
   const [serviceError, setServiceError] = useState(false);
   const [sessionId, setSessionId] = useState('');
-  const [showOnboarding, setShowOnboarding] = useState(() => window.localStorage.getItem('saheli-onboarding-complete') !== 'true');
-  const [onboardingStep, setOnboardingStep] = useState(0);
-  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [isOnline, setIsOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true));
   const [guidanceMode, setGuidanceMode] = useState(() => (navigator.onLine ? 'checking' : 'local'));
   const [showInternetPrompt, setShowInternetPrompt] = useState(false);
   const [showVoiceHelpModal, setShowVoiceHelpModal] = useState(false);
@@ -1729,8 +1440,22 @@ function App() {
 
   useEffect(() => {
     let active = true;
-    const id = window.sessionStorage.getItem('saheli-session-id') || window.crypto.randomUUID();
-    window.sessionStorage.setItem('saheli-session-id', id);
+    let id = '';
+    try {
+      id = (typeof window !== 'undefined' && window.sessionStorage) ? window.sessionStorage.getItem('saheli-session-id') : '';
+    } catch {}
+    if (!id) {
+      try {
+        id = typeof window !== 'undefined' && typeof window.crypto?.randomUUID === 'function'
+          ? window.crypto.randomUUID()
+          : 'sess-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          window.sessionStorage.setItem('saheli-session-id', id);
+        }
+      } catch {
+        id = 'sess-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      }
+    }
     sessionSeedRef.current = id;
     getHealth().then((result) => { if (active) applyHealth(result); }).catch(() => { if (active) setGuidanceMode('local'); });
     openSession(id, lang).then(() => { if (active) setSessionId(id); }).catch(() => undefined);
@@ -2081,7 +1806,7 @@ function App() {
       )}
 
       <header className="app-header">
-        <button className="wordmark" onClick={showOnboarding ? () => setOnboardingStep(0) : restart} aria-label={t.brand}>
+        <button className="wordmark" onClick={restart} aria-label={t.brand}>
           <span className="wordmark-mark" aria-hidden="true"><i /></span>
           <span className="wordmark-copy"><strong>{t.brand}</strong><small>{t.brandSub}</small></span>
         </button>
@@ -2103,7 +1828,7 @@ function App() {
             <span>{guidanceMode === 'live' ? 'Online Gemini AI' : 'Offline Device AI'}</span>
           </span>
 
-          {!showOnboarding && <button className="services-button" onClick={openResourceHub}><BookOpen size={17} /> <span>{t.services}</span></button>}
+          <button className="services-button" onClick={openResourceHub}><BookOpen size={17} /> <span>{t.services}</span></button>
           <button className="help-button" onClick={() => setShowSafety(true)}><CircleHelp size={18} /> <span>{t.help}</span></button>
 
           <div className="language-wrap">
@@ -2132,22 +1857,7 @@ function App() {
         </div>
       </header>
 
-      {showOnboarding ? (
-        <OnboardingView
-          lang={lang}
-          setLang={changeLanguage}
-          step={onboardingStep}
-          setStep={setOnboardingStep}
-          onComplete={finishOnboarding}
-          onStartVoice={startOnboardingVoice}
-          onSelectScheme={(schemeId) => {
-            finishOnboarding();
-            handleSelectScheme(schemeId);
-          }}
-          t={t}
-        />
-      ) : (
-        <main className="page-shell">
+      <main className="page-shell">
           <div className="page-rule" />
           {!isOnline && (
             <div className="offline-banner" role="status">
@@ -2715,9 +2425,8 @@ function App() {
             </section>
           )}
         </main>
-      )}
 
-      {!showOnboarding && <footer className="app-footer"><span>{t.practice}</span><span>{t.brand} · 2026</span></footer>}
+      <footer className="app-footer"><span>{t.practice}</span><span>{t.brand} · 2026</span></footer>
 
 
 
