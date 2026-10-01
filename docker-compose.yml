@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: saheli-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: saheli
+      POSTGRES_USER: saheli
+      POSTGRES_PASSWORD: saheli
+    ports:
+      - "5432:5432"
+    volumes:
+      - saheli_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saheli -d saheli"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://saheli:saheli@postgres:5432/saheli
+      APP_ORIGIN: http://localhost:8787
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8787:8787"
+
+volumes:
+  saheli_postgres_data:

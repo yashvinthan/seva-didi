@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+.gemini/
+.codex/
+.agent/
+.agents/
+.impeccable/
+
